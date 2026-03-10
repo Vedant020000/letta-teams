@@ -142,7 +142,7 @@ letta-teams task <task-id> --wait
 
 If you've scrolled this far and find Letta Teams useful, consider supporting its development! Building and maintaining open-source AI tools takes time, API credits, and a lot of coffee ☕
 
-[Buy me a coffee](https://www.buymeacoffee.com/vedant020000)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=flat-square&logo=buy-me-a-coffee&logoColor=black)]
 
 Your support helps keep projects like this free and open source. Thank you! 
 
