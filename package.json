@@ -1,0 +1,76 @@
+{
+  "name": "letta-teams",
+  "version": "0.1.0",
+  "description": "CLI for orchestrating teams of stateful Letta agents working in parallel",
+  "type": "module",
+  "main": "./dist/cli.js",
+  "types": "./dist/cli.d.ts",
+  "bin": {
+    "letta-teams": "./dist/cli.js",
+    "lteams": "./dist/cli.js"
+  },
+  "files": [
+    "dist/",
+    "scripts/",
+    "skills/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc && echo \"✓ Build complete: $(find dist -name '*.js' | wc -l) files compiled to dist/\"",
+    "dev": "tsc --watch",
+    "start": "node dist/cli.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm test",
+    "postinstall": "node scripts/patch-context-window.js"
+  },
+  "keywords": [
+    "letta",
+    "ai",
+    "agents",
+    "cli",
+    "multi-agent",
+    "orchestration",
+    "parallel",
+    "llm",
+    "assistant",
+    "stateful-agents",
+    "agent-teams"
+  ],
+  "author": "Vedant Sondur <vedantsondur020@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/letta-ai/letta-teams.git"
+  },
+  "bugs": {
+    "url": "https://github.com/letta-ai/letta-teams/issues"
+  },
+  "homepage": "https://github.com/letta-ai/letta-teams#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@letta-ai/letta": "^0.0.1",
+    "@letta-ai/letta-client": "^1.7.11",
+    "@letta-ai/letta-code-sdk": "^0.1.10",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.7",
+    "ora": "^9.3.0",
+    "p-limit": "^6.2.0"
+  },
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^12.0.6",
+    "@types/node": "^22.13.10",
+    "proper-lockfile": "^4.1.2",
+    "semantic-release": "^25.0.3",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.9"
+  }
+}

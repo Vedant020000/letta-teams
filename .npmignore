@@ -1,0 +1,41 @@
+# Source files (only dist/ is published)
+src/
+
+# Tests - exclude all test files
+**/*.test.ts
+**/*.test.js
+**/*.test.d.ts
+**/tests/
+__mocks__/
+
+# Test config
+vitest.config.ts
+vitest.config.js
+coverage/
+
+# Development
+.github/
+.letta/
+.vscode/
+.idea/
+.lteams/
+
+# Dependencies
+node_modules/
+
+# Documentation (keep README.md, LICENSE, CHANGELOG.md)
+docs/
+letta-code/
+letta-code-sdk/
+letta-node/
+
+# Build artifacts
+*.tsbuildinfo
+
+# Misc
+*.log
+.DS_Store
+Thumbs.db
+.env
+.env.*
+*.tgz
