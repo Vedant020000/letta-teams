@@ -54,6 +54,8 @@ import {
 import { displayDashboard } from "./dashboard.js";
 import { registerCommands } from "./commands/index.js";
 import { launchTui } from "./tui/index.js";
+import { checkAndAutoUpdate } from "./updater/auto-update.js";
+import { startStartupAutoUpdateCheck } from "./updater/startup-auto-update.js";
 
 // Get version from package.json
 const require = createRequire(import.meta.url);
@@ -1241,6 +1243,9 @@ function handleError(error: unknown, jsonMode: boolean): void {
 
 // Ensure .lteams directory exists on startup
 ensureLteamsDir();
+
+// Start background auto-update check (non-blocking)
+startStartupAutoUpdateCheck(checkAndAutoUpdate);
 
 // Check for --tui flag before parsing
 if (process.argv.includes('--tui')) {
