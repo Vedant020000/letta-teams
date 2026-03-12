@@ -23,8 +23,9 @@ const AgentList: React.FC<AgentListProps> = ({ teammates, selectedIndex }) => {
       <Box borderStyle="single" borderColor="gray" flexDirection="column">
         {teammates.map((agent, index) => {
           const isSelected = index === selectedIndex;
-          const icon = getStatusIcon(agent.status);
-          const color = getStatusColor(agent.status);
+          const status = agent.status || 'idle';
+          const icon = getStatusIcon(status);
+          const color = getStatusColor(status);
           const progress = agent.progress !== undefined
             ? formatProgressBar(agent.progress, 10)
             : '░'.repeat(10);
@@ -40,7 +41,7 @@ const AgentList: React.FC<AgentListProps> = ({ teammates, selectedIndex }) => {
                 {isSelected ? ' ' : ''}
                 {icon} {agent.name.padEnd(16).slice(0, 16)}
                 {' '}
-                {agent.status.padEnd(7)}
+                {status.padEnd(7)}
                 {' '}
                 <Text color={color}>{progress}</Text>
                 {' '}

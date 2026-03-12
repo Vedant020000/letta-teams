@@ -105,9 +105,24 @@ Every message creates a **task** with:
 | `tasks` | List active tasks |
 | `task <id>` | View task details and results |
 | `dashboard` | See team activity and progress |
+| `--tui` | Launch interactive TUI dashboard |
 | `update-progress <name> ...` | Self-report progress (used by teammates) |
 
 All messaging commands support `--wait` to block until completion.
+
+### Interactive TUI Dashboard
+
+Launch the interactive terminal UI for a rich monitoring experience:
+
+```bash
+letta-teams --tui
+```
+
+The TUI provides:
+- **4 tabs**: Agents, Tasks, Activity, Details
+- **Real-time updates**: Polls every 3 seconds
+- **Keyboard navigation**: `1-4` for tabs, `Tab` to switch focus, arrows to navigate, `r` to refresh, `q` to quit
+- **Detailed views**: See agent status, task progress, and activity history
 
 ## Example: Agent Orchestration
 
