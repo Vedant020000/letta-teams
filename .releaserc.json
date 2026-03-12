@@ -2,10 +2,30 @@
   "branches": ["main", "master"],
   "plugins": [
     "@semantic-release/commit-analyzer",
-    "@semantic-release/release-notes-generator",
-    "@semantic-release/changelog",
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "writerOpts": {
+          "groupBy": "type",
+          "commitGroupsSort": ["feat", "fix", "perf", "refactor"],
+          "commitsSort": "scope"
+        }
+      }
+    ],
+    [
+      "@semantic-release/changelog",
+      {
+        "changelogFile": "CHANGELOG.md",
+        "changelogTitle": "# Changelog"
+      }
+    ],
     "@semantic-release/npm",
-    "@semantic-release/github",
+    [
+      "@semantic-release/github",
+      {
+        "assets": []
+      }
+    ],
     [
       "@semantic-release/git",
       {
