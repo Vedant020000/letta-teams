@@ -271,6 +271,24 @@ async function deleteAgentFromServer(agentId: string): Promise<void> {
 }
 
 /**
+ * Detect if we're connected to Letta Cloud
+ */
+function isLettaCloud(): boolean {
+  const baseUrl = process.env.LETTA_BASE_URL;
+  // Letta Cloud if no custom base URL, or explicitly set to api.letta.com
+  return !baseUrl || baseUrl === "https://api.letta.com";
+}
+
+/**
+ * Get the default model to use.
+ * - Letta Cloud: use "auto" for intelligent model routing
+ * - Self-hosted: let CLI/server decide (undefined)
+ */
+function getDefaultModel(): string | undefined {
+  return isLettaCloud() ? "auto" : undefined;
+}
+
+/**
  * Spawn a new teammate agent using the SDK
  * Creates an agent with default Letta Code configuration
  */
@@ -279,7 +297,8 @@ export async function spawnTeammate(
   role: string,
   options: SpawnOptions = {}
 ): Promise<TeammateState> {
-  const { model } = options;
+  // Use "auto" on Letta Cloud for intelligent routing, otherwise let CLI decide
+  const model = options.model ?? getDefaultModel();
   checkApiKey();
   validateName(name);
 
