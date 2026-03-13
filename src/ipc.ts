@@ -396,7 +396,15 @@ export async function dispatchAndWait(
 export async function spawnTeammateViaDaemon(
   name: string,
   role: string,
-  options?: { model?: string; timeoutMs?: number; projectDir?: string }
+  options?: {
+    model?: string;
+    spawnPrompt?: string;
+    skipInit?: boolean;
+    memfsEnabled?: boolean;
+    memfsStartup?: import("./types.js").MemfsStartup;
+    timeoutMs?: number;
+    projectDir?: string;
+  }
 ): Promise<TeammateState> {
   const response = await sendToDaemon(
     {
@@ -404,6 +412,10 @@ export async function spawnTeammateViaDaemon(
       name,
       role,
       model: options?.model,
+      spawnPrompt: options?.spawnPrompt,
+      skipInit: options?.skipInit,
+      memfsEnabled: options?.memfsEnabled,
+      memfsStartup: options?.memfsStartup,
       projectDir: options?.projectDir ?? process.cwd(),
     },
     { timeoutMs: options?.timeoutMs ?? 120000 } // 2 min default for spawn

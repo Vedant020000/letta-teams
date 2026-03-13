@@ -9,7 +9,12 @@ import * as net from "node:net";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import { messageTeammate, spawnTeammate, checkApiKey } from "./agent.js";
+import {
+  messageTeammate,
+  spawnTeammate,
+  checkApiKey,
+  initializeTeammateMemory,
+} from "./agent.js";
 import {
   createTask,
   updateTask,
@@ -20,8 +25,41 @@ import {
   getGlobalAuthDir,
   ensureGlobalAuthDir,
   setProjectDir,
+  loadTeammate,
+  updateTeammate,
 } from "./store.js";
 import type { DaemonMessage, DaemonResponse, TaskState, TeammateState } from "./types.js";
+import { buildInitPrompt, parseInitResult } from "./init.js";
+import {
+  scaffoldTeammateMemfs,
+  updateTeammateInitScaffold,
+  syncOwnedMemfsFiles,
+} from "./memfs.js";
+
+async function syncTeammateMemfs(teammateName: string, reason: string): Promise<void> {
+  const syncing = updateTeammate(teammateName, {
+    memfsSyncStatus: "syncing",
+    memfsSyncError: undefined,
+  });
+
+  const current = syncing ?? loadTeammate(teammateName);
+  if (!current || !current.memfsEnabled) return;
+
+  try {
+    const result = syncOwnedMemfsFiles(current, reason);
+    updateTeammate(teammateName, {
+      memfsSyncStatus: result.synced ? "synced" : "idle",
+      memfsLastSyncedAt: result.timestamp,
+      memfsSyncError: undefined,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    updateTeammate(teammateName, {
+      memfsSyncStatus: "error",
+      memfsSyncError: message,
+    });
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════
 // CONFIGURATION
@@ -105,6 +143,100 @@ function removeDaemonPid(): void {
  */
 const runningTasks = new Map<string, { startedAt: string }>();
 
+async function startBackgroundInit(teammate: TeammateState): Promise<string> {
+  const task = createTask(teammate.name, "[internal init]");
+  updateTeammate(teammate.name, {
+    initStatus: "pending",
+    initTaskId: task.id,
+  });
+
+  const pendingState = loadTeammate(teammate.name);
+  if (pendingState) {
+    scaffoldTeammateMemfs(pendingState);
+    await syncTeammateMemfs(teammate.name, "scaffold teammate memory");
+  }
+
+  processInitTask(task.id, teammate.name).catch((error) => {
+    console.error(`Init task ${task.id} failed:`, error);
+  });
+
+  return task.id;
+}
+
+async function processInitTask(taskId: string, teammateName: string): Promise<void> {
+  const startedAt = new Date().toISOString();
+  updateTask(taskId, { status: "running", startedAt });
+  runningTasks.set(taskId, { startedAt });
+  updateTeammate(teammateName, {
+    initStatus: "running",
+    initStartedAt: startedAt,
+    initError: undefined,
+  });
+  {
+    const current = loadTeammate(teammateName);
+    if (current) {
+      updateTeammateInitScaffold(current);
+      await syncTeammateMemfs(teammateName, "update init status running");
+    }
+  }
+
+  try {
+    checkApiKey();
+    const state = loadTeammate(teammateName);
+    if (!state) {
+      throw new Error(`Teammate '${teammateName}' not found`);
+    }
+
+    const initRun = await initializeTeammateMemory(teammateName, buildInitPrompt(state));
+    const result = initRun.result;
+    const parsed = parseInitResult(result);
+    const completedAt = new Date().toISOString();
+
+    updateTask(taskId, {
+      status: parsed.initStatus === "done" ? "done" : "error",
+      result,
+      completedAt,
+    });
+
+    updateTeammate(teammateName, {
+      initStatus: parsed.initStatus,
+      initConversationId: initRun.conversationId,
+      selectedSpecTitle: parsed.selectedSpecTitle,
+      initCompletedAt: completedAt,
+      initError: parsed.initStatus === "done" ? undefined : result,
+    });
+    {
+      const current = loadTeammate(teammateName);
+      if (current) {
+        updateTeammateInitScaffold(current);
+        await syncTeammateMemfs(teammateName, "update init status complete");
+      }
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const completedAt = new Date().toISOString();
+    updateTask(taskId, {
+      status: "error",
+      error: errorMessage,
+      completedAt,
+    });
+    updateTeammate(teammateName, {
+      initStatus: "error",
+      initError: errorMessage,
+      initCompletedAt: completedAt,
+    });
+    {
+      const current = loadTeammate(teammateName);
+      if (current) {
+        updateTeammateInitScaffold(current);
+        await syncTeammateMemfs(teammateName, "update init status error");
+      }
+    }
+  } finally {
+    runningTasks.delete(taskId);
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════
 // DAEMON SERVER
 // ═══════════════════════════════════════════════════════════════
@@ -138,7 +270,21 @@ async function handleMessage(msg: DaemonMessage): Promise<DaemonResponse> {
         checkApiKey();
         const teammate = await spawnTeammate(msg.name, msg.role, {
           model: msg.model,
+          spawnPrompt: msg.spawnPrompt,
+          skipInit: msg.skipInit,
+          memfsEnabled: msg.memfsEnabled,
+          memfsStartup: msg.memfsStartup,
         });
+
+        if (!msg.skipInit) {
+          const initTaskId = await startBackgroundInit(teammate);
+          const updated = loadTeammate(teammate.name);
+          return {
+            type: "spawned",
+            teammate: updated ?? { ...teammate, initTaskId },
+          };
+        }
+
         return { type: "spawned", teammate };
       } catch (error) {
         const errorMessage =

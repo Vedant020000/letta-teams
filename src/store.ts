@@ -251,6 +251,20 @@ export function updateTeammate(
       | "errorDetails"
       | "progress"
       | "progressNote"
+      | "spawnPrompt"
+      | "memfsEnabled"
+      | "memfsStartup"
+      | "memfsMemoryDir"
+      | "memfsSyncStatus"
+      | "memfsLastSyncedAt"
+      | "memfsSyncError"
+      | "initStatus"
+      | "initTaskId"
+      | "initConversationId"
+      | "initError"
+      | "selectedSpecTitle"
+      | "initStartedAt"
+      | "initCompletedAt"
     >
   >
 ): TeammateState | null {

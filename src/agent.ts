@@ -10,6 +10,7 @@ import {
 import pLimit from "p-limit";
 import type { TeammateState, MemfsStartup } from "./types.js";
 import { MEMFS_STARTUP_VALUES } from "./types.js";
+import { getMemoryFilesystemRoot } from "./memfs.js";
 import {
   loadTeammate,
   saveTeammate,
@@ -227,6 +228,10 @@ export function checkApiKey(): void {
  */
 export interface SpawnOptions {
   model?: string;
+  spawnPrompt?: string;
+  skipInit?: boolean;
+  memfsEnabled?: boolean;
+  memfsStartup?: MemfsStartup;
 }
 
 /**
@@ -299,6 +304,9 @@ export async function spawnTeammate(
 ): Promise<TeammateState> {
   // Use "auto" on Letta Cloud for intelligent routing, otherwise let CLI decide
   const model = options.model ?? getDefaultModel();
+  const memfsEnabled = options.memfsEnabled ?? true;
+  const initStatus = options.skipInit ? "skipped" : "pending";
+  validateMemfsStartup(options.memfsStartup);
   checkApiKey();
   validateName(name);
 
@@ -417,6 +425,7 @@ letta-teams update-progress ${name} --done
           model,
           tags: [`name:${name}`, "origin:letta-teams"],
           memory: [teammateBlock],
+          memfs: memfsEnabled,
         }),
       { maxAttempts: 3, baseDelayMs: 2000 }
     );
@@ -454,6 +463,12 @@ letta-teams update-progress ${name} --done
       agentId,
       conversationId,
       model,
+      spawnPrompt: options.spawnPrompt,
+      memfsEnabled,
+      memfsStartup: options.memfsStartup,
+      memfsMemoryDir: memfsEnabled ? getMemoryFilesystemRoot(agentId) : undefined,
+      memfsSyncStatus: memfsEnabled ? "idle" : undefined,
+      initStatus,
       status: "idle",
       lastUpdated: now,
       createdAt: now,
@@ -484,6 +499,76 @@ export interface MessageEventCallback {
 export interface MessageOptions {
   /** Callback for streaming events (tool calls, results) */
   onEvent?: MessageEventCallback;
+}
+
+/**
+ * Run a dedicated initialization conversation for a teammate.
+ * This keeps memory bootstrap separate from the main working conversation.
+ */
+export async function initializeTeammateMemory(
+  name: string,
+  message: string,
+  options: MessageOptions = {}
+): Promise<{ result: string; conversationId?: string }> {
+  const { onEvent } = options;
+  const state = loadTeammate(name);
+
+  if (!state) {
+    throw new Error(`Teammate '${name}' not found`);
+  }
+
+  checkApiKey();
+
+  return withTeammateLock(name, async () => {
+    const agentId = state.agentId;
+    updateStatus(name, "working");
+
+    try {
+      await using session = createSession(agentId, {
+        permissionMode: "bypassPermissions",
+        disallowedTools: ["AskUserQuestion", "EnterPlanMode", "ExitPlanMode"],
+      });
+
+      await withRetry(() => session.send(message), { maxAttempts: 2, baseDelayMs: 1000 });
+
+      let accumulatedText = "";
+
+      for await (const msg of session.stream()) {
+        if (msg.type === "assistant" && "content" in msg && typeof msg.content === "string") {
+          accumulatedText += msg.content;
+        }
+
+        if (onEvent) {
+          if (msg.type === "tool_call") {
+            onEvent({ type: "tool_call", name: msg.toolName, input: msg.toolInput });
+          }
+          if (msg.type === "tool_result") {
+            const snippet = msg.content.length > 80
+              ? msg.content.slice(0, 80) + "..."
+              : msg.content;
+            onEvent({ type: "tool_result", isError: msg.isError, snippet });
+          }
+        }
+
+        if (msg.type === "result") {
+          updateStatus(name, "done");
+          return {
+            result: msg.result || accumulatedText || "",
+            conversationId: session.conversationId ?? undefined,
+          };
+        }
+      }
+
+      updateStatus(name, "done");
+      return {
+        result: accumulatedText,
+        conversationId: undefined,
+      };
+    } catch (error) {
+      updateStatus(name, "error");
+      throw error;
+    }
+  });
 }
 
 /**

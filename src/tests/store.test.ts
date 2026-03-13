@@ -139,6 +139,32 @@ describe('store', () => {
       expect(updated?.lastUpdated).not.toBe('2026-03-06T09:00:00Z');
     });
 
+    it('should persist memfs sync metadata while keeping teammate state in .lteams', () => {
+      const state: TeammateState = {
+        name: 'reviewer',
+        role: 'Code reviewer',
+        agentId: 'agent-xyz',
+        status: 'idle',
+        lastUpdated: '2026-03-06T09:00:00Z',
+        createdAt: '2026-03-06T09:00:00Z',
+      };
+      saveTeammate(state);
+
+      const updated = updateTeammate('reviewer', {
+        memfsMemoryDir: '/home/user/.letta/agents/agent-xyz/memory',
+        memfsSyncStatus: 'synced',
+        memfsLastSyncedAt: '2026-03-06T10:00:00Z',
+      });
+
+      expect(updated?.memfsMemoryDir).toContain('/.letta/agents/agent-xyz/memory');
+      expect(updated?.memfsSyncStatus).toBe('synced');
+      expect(updated?.memfsLastSyncedAt).toBe('2026-03-06T10:00:00Z');
+
+      const raw = fs.readFileSync(getTeammatePath('reviewer'), 'utf-8');
+      expect(raw).toContain('"memfsMemoryDir"');
+      expect(getTeammatePath('reviewer')).toContain(`${path.sep}.lteams${path.sep}`);
+    });
+
     it('should return null for non-existent teammate', () => {
       expect(updateTeammate('nonexistent', { status: 'done' })).toBeNull();
     });

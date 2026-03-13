@@ -13,12 +13,22 @@ export interface TeammateState {
   conversationId?: string;
   /** Model used by the agent */
   model?: string;
+  /** Rich spawn prompt used for background memory initialization */
+  spawnPrompt?: string;
 
   // === Memfs Configuration ===
   /** Whether memfs (git-backed memory) is enabled */
   memfsEnabled?: boolean;
   /** Memfs startup mode */
   memfsStartup?: MemfsStartup;
+  /** Letta memfs repo path under ~/.letta/... (never .lteams/) */
+  memfsMemoryDir?: string;
+  /** Memfs sync lifecycle state for system-owned scaffold files */
+  memfsSyncStatus?: MemfsSyncStatus;
+  /** Last memfs sync success timestamp */
+  memfsLastSyncedAt?: string;
+  /** Last memfs sync error, if any */
+  memfsSyncError?: string;
 
   // === Status ===
   /** Current status */
@@ -44,6 +54,22 @@ export interface TeammateState {
   /** Human-readable progress note (e.g., "3 of 5 files processed") */
   progressNote?: string;
 
+  // === Initialization ===
+  /** Background initialization status */
+  initStatus?: InitStatus;
+  /** Background init task ID */
+  initTaskId?: string;
+  /** Dedicated conversation ID used for initialization */
+  initConversationId?: string;
+  /** Error captured during initialization */
+  initError?: string;
+  /** Selected specialization summary from init */
+  selectedSpecTitle?: string;
+  /** ISO timestamp when init started */
+  initStartedAt?: string;
+  /** ISO timestamp when init completed */
+  initCompletedAt?: string;
+
   // === Legacy (kept for backwards compatibility) ===
   /** @deprecated Use currentTask instead */
   todo?: string;
@@ -56,11 +82,13 @@ export interface TeammateState {
 }
 
 export type TeammateStatus = "working" | "idle" | "done" | "error";
+export type InitStatus = "pending" | "running" | "done" | "error" | "skipped";
 
 /**
  * Memfs startup modes
  */
 export type MemfsStartup = "blocking" | "background" | "skip";
+export type MemfsSyncStatus = "idle" | "syncing" | "synced" | "error";
 
 /**
  * Valid memfs startup values for validation
@@ -139,7 +167,17 @@ export interface TaskState {
  */
 export type DaemonMessage =
   | { type: "dispatch"; teammateName: string; message: string; projectDir: string }
-  | { type: "spawn"; name: string; role: string; model?: string; projectDir: string }
+  | {
+      type: "spawn";
+      name: string;
+      role: string;
+      model?: string;
+      spawnPrompt?: string;
+      skipInit?: boolean;
+      memfsEnabled?: boolean;
+      memfsStartup?: MemfsStartup;
+      projectDir: string;
+    }
   | { type: "status"; taskId?: string; projectDir: string }
   | { type: "list"; projectDir: string }
   | { type: "stop" };

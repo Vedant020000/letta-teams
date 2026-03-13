@@ -3,6 +3,7 @@ import {
   validateName,
   checkApiKey,
   spawnTeammate,
+  initializeTeammateMemory,
   messageTeammate,
   broadcastMessage,
   dispatchMessages,
@@ -50,6 +51,7 @@ vi.mock("./store.js", () => ({
   loadTeammate: vi.fn(),
   updateStatus: vi.fn(),
   listTeammates: vi.fn(),
+  updateTeammate: vi.fn(),
 }));
 
 // Mock @letta-ai/letta-client for deleteAgentFromServer
@@ -220,6 +222,56 @@ describe("Agent Module", () => {
       expect(state.createdAt >= before).toBe(true);
       expect(state.createdAt <= after).toBe(true);
       expect(state.lastUpdated).toBe(state.createdAt);
+    });
+
+    it("should persist init and memfs options", async () => {
+      const state = await spawnTeammate("alice", "Developer", {
+        spawnPrompt: "Specialize in frontend systems",
+        memfsEnabled: false,
+        skipInit: true,
+      });
+
+      expect(state.spawnPrompt).toBe("Specialize in frontend systems");
+      expect(state.memfsEnabled).toBe(false);
+      expect(state.initStatus).toBe("skipped");
+    });
+
+    it("should pass memfs to createAgent when enabled", async () => {
+      await spawnTeammate("alice", "Developer", {
+        memfsEnabled: true,
+      });
+
+      const { createAgent } = await import("@letta-ai/letta-code-sdk");
+      expect(createAgent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          memfs: true,
+        }),
+      );
+    });
+  });
+
+  describe("initializeTeammateMemory", () => {
+    const mockTeammate = {
+      name: "alice",
+      role: "Developer",
+      agentId: "agent-123",
+      conversationId: "conv-123",
+      status: "idle" as const,
+      lastUpdated: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    };
+
+    beforeEach(() => {
+      vi.mocked(store.getApiKey).mockReturnValue("test-key");
+      vi.mocked(store.loadTeammate).mockReturnValue(mockTeammate);
+      vi.mocked(store.updateStatus).mockImplementation(() => mockTeammate);
+    });
+
+    it("should create a separate init conversation", async () => {
+      const result = await initializeTeammateMemory("alice", "Initialize memory");
+
+      expect(result.result).toBe("Task completed successfully!");
+      expect(result.conversationId).toBe("conv-agent-123");
     });
   });
 

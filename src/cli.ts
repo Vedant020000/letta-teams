@@ -188,6 +188,9 @@ program
   .command("spawn <name> <role>")
   .description("Create a new teammate agent with default Letta Code configuration")
   .option("--model <model>", "Model to use (e.g., claude-sonnet-4-20250514, zai/glm-5)")
+  .option("--spawn-prompt <text>", "Extra specialization prompt used for background memory initialization")
+  .option("--skip-init", "Skip background memory initialization")
+  .option("--no-memfs", "Disable memfs for this teammate")
   .option("--force", "Overwrite existing teammate with same name")
   .action(async (name: string, role: string, options) => {
     const globalOpts = program.opts();
@@ -212,6 +215,9 @@ program
       // Spawn via daemon
       const state = await spawnTeammateViaDaemon(name, role, {
         model: options.model,
+        spawnPrompt: options.spawnPrompt,
+        skipInit: options.skipInit,
+        memfsEnabled: !options.noMemfs,
       });
 
       if (globalOpts.json) {
@@ -221,6 +227,8 @@ program
         console.log(`  Agent ID: ${state.agentId}`);
         console.log(`  Role: ${state.role}`);
         if (state.model) console.log(`  Model: ${state.model}`);
+        console.log(`  Memfs: ${state.memfsEnabled === false ? "disabled" : "enabled"}`);
+        if (state.initStatus) console.log(`  Init: ${state.initStatus}`);
       }
     } catch (error) {
       handleError(error, globalOpts.json);
