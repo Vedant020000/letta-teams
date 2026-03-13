@@ -43,6 +43,7 @@ import {
   getTaskStatus,
   listTasks,
   getDaemonLogPath,
+  reinitTeammateViaDaemon,
 } from "./ipc.js";
 import { getDaemonPort } from "./daemon.js";
 
@@ -147,6 +148,9 @@ describe("IPC Module", () => {
                     },
                   }) + "\n");
                   break;
+                case "reinit":
+                  socket.write(JSON.stringify({ type: "accepted", taskId: "task-reinit-123" }) + "\n");
+                  break;
                 default:
                   socket.write(JSON.stringify({ type: "error", message: "Unknown type" }) + "\n");
               }
@@ -243,6 +247,15 @@ describe("IPC Module", () => {
 
       expect(response.type).toBe("spawned");
       expect((response as any).teammate.model).toBe("zai/glm-5");
+    });
+
+    it("should send reinit message and receive accepted response", async () => {
+      const taskId = await reinitTeammateViaDaemon("alice", {
+        prompt: "Refresh your memory organization",
+        projectDir: "/project",
+      });
+
+      expect(taskId).toBe("task-reinit-123");
     });
 
     it("should timeout on slow response", async () => {

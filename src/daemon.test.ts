@@ -77,8 +77,15 @@ describe("Daemon Module", () => {
 
   describe("stopDaemon", () => {
     it("should return false when no daemon is listening", async () => {
-      // Use a port that's not listening
-      vi.mocked(getDaemonPort).mockReturnValue(19999);
+      const unusedPort = await new Promise<number>((resolve) => {
+        const server = net.createServer();
+        server.listen(0, "127.0.0.1", () => {
+          const address = server.address();
+          const port = typeof address === "object" && address ? address.port : 19999;
+          server.close(() => resolve(port));
+        });
+      });
+      vi.mocked(getDaemonPort).mockReturnValue(unusedPort);
       
       const result = await stopDaemon();
       expect(result).toBe(false);
@@ -116,6 +123,9 @@ describe("Daemon Module", () => {
                       createdAt: new Date().toISOString(),
                     },
                   }) + "\n");
+                  break;
+                case "reinit":
+                  socket.write(JSON.stringify({ type: "accepted", taskId: "task-reinit-123" }) + "\n");
                   break;
                 case "status":
                   if (msg.taskId) {
@@ -196,6 +206,17 @@ describe("Daemon Module", () => {
 
       expect(response.type).toBe("task");
       expect((response as any).task.id).toBe("task-123");
+    });
+
+    it("should handle reinit message", async () => {
+      const response = await sendTestMessage(testPort, {
+        type: "reinit",
+        teammateName: "alice",
+        projectDir: "/project",
+      });
+
+      expect(response.type).toBe("accepted");
+      expect((response as any).taskId).toBe("task-reinit-123");
     });
 
     it("should handle status message without taskId", async () => {

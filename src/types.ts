@@ -178,6 +178,12 @@ export type DaemonMessage =
       memfsStartup?: MemfsStartup;
       projectDir: string;
     }
+  | {
+      type: "reinit";
+      teammateName: string;
+      prompt?: string;
+      projectDir: string;
+    }
   | { type: "status"; taskId?: string; projectDir: string }
   | { type: "list"; projectDir: string }
   | { type: "stop" };

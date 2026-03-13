@@ -29,7 +29,7 @@ import {
   updateTeammate,
 } from "./store.js";
 import type { DaemonMessage, DaemonResponse, TaskState, TeammateState } from "./types.js";
-import { buildInitPrompt, parseInitResult } from "./init.js";
+import { buildInitPrompt, buildReinitPrompt, parseInitResult } from "./init.js";
 import {
   scaffoldTeammateMemfs,
   updateTeammateInitScaffold,
@@ -143,27 +143,39 @@ function removeDaemonPid(): void {
  */
 const runningTasks = new Map<string, { startedAt: string }>();
 
-async function startBackgroundInit(teammate: TeammateState): Promise<string> {
-  const task = createTask(teammate.name, "[internal init]");
+async function startBackgroundInit(
+  teammate: TeammateState,
+  options: { message: string; prompt: string; syncReason: string } = {
+    message: "[internal init]",
+    prompt: buildInitPrompt(teammate),
+    syncReason: "scaffold teammate memory",
+  },
+): Promise<string> {
+  const task = createTask(teammate.name, options.message);
   updateTeammate(teammate.name, {
     initStatus: "pending",
     initTaskId: task.id,
+    initConversationId: undefined,
+    initError: undefined,
+    selectedSpecTitle: undefined,
+    initStartedAt: undefined,
+    initCompletedAt: undefined,
   });
 
   const pendingState = loadTeammate(teammate.name);
   if (pendingState) {
     scaffoldTeammateMemfs(pendingState);
-    await syncTeammateMemfs(teammate.name, "scaffold teammate memory");
+    await syncTeammateMemfs(teammate.name, options.syncReason);
   }
 
-  processInitTask(task.id, teammate.name).catch((error) => {
+  processInitTask(task.id, teammate.name, options.prompt).catch((error) => {
     console.error(`Init task ${task.id} failed:`, error);
   });
 
   return task.id;
 }
 
-async function processInitTask(taskId: string, teammateName: string): Promise<void> {
+async function processInitTask(taskId: string, teammateName: string, prompt: string): Promise<void> {
   const startedAt = new Date().toISOString();
   updateTask(taskId, { status: "running", startedAt });
   runningTasks.set(taskId, { startedAt });
@@ -182,12 +194,11 @@ async function processInitTask(taskId: string, teammateName: string): Promise<vo
 
   try {
     checkApiKey();
-    const state = loadTeammate(teammateName);
-    if (!state) {
+    if (!loadTeammate(teammateName)) {
       throw new Error(`Teammate '${teammateName}' not found`);
     }
 
-    const initRun = await initializeTeammateMemory(teammateName, buildInitPrompt(state));
+    const initRun = await initializeTeammateMemory(teammateName, prompt);
     const result = initRun.result;
     const parsed = parseInitResult(result);
     const completedAt = new Date().toISOString();
@@ -277,7 +288,11 @@ async function handleMessage(msg: DaemonMessage): Promise<DaemonResponse> {
         });
 
         if (!msg.skipInit) {
-          const initTaskId = await startBackgroundInit(teammate);
+          const initTaskId = await startBackgroundInit(teammate, {
+            message: "[internal init]",
+            prompt: buildInitPrompt(teammate),
+            syncReason: "scaffold teammate memory",
+          });
           const updated = loadTeammate(teammate.name);
           return {
             type: "spawned",
@@ -291,6 +306,24 @@ async function handleMessage(msg: DaemonMessage): Promise<DaemonResponse> {
           error instanceof Error ? error.message : String(error);
         return { type: "error", message: errorMessage };
       }
+    }
+
+    case "reinit": {
+      setProjectDir(msg.projectDir);
+      checkApiKey();
+
+      const teammate = loadTeammate(msg.teammateName);
+      if (!teammate) {
+        return { type: "error", message: `Teammate '${msg.teammateName}' not found` };
+      }
+
+      const taskId = await startBackgroundInit(teammate, {
+        message: "[internal reinit]",
+        prompt: buildReinitPrompt(teammate, msg.prompt),
+        syncReason: "re-scaffold teammate memory",
+      });
+
+      return { type: "accepted", taskId };
     }
 
     case "status": {

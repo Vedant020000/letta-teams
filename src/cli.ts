@@ -49,6 +49,7 @@ import {
   dispatchTask,
   waitForTask,
   spawnTeammateViaDaemon,
+  reinitTeammateViaDaemon,
   isDaemonRunning,
 } from "./ipc.js";
 import { displayDashboard } from "./dashboard.js";
@@ -229,6 +230,57 @@ program
         if (state.model) console.log(`  Model: ${state.model}`);
         console.log(`  Memfs: ${state.memfsEnabled === false ? "disabled" : "enabled"}`);
         if (state.initStatus) console.log(`  Init: ${state.initStatus}`);
+      }
+    } catch (error) {
+      handleError(error, globalOpts.json);
+    }
+  });
+
+// ═══════════════════════════════════════════════════════════════
+// REINIT COMMAND
+// ═══════════════════════════════════════════════════════════════
+
+program
+  .command("reinit <name>")
+  .description("Re-run non-destructive background memory initialization for a teammate")
+  .option("--prompt <text>", "Extra instructions for the reinit pass")
+  .option("-w, --wait", "Wait for reinit to complete and show result")
+  .action(async (name: string, options) => {
+    const globalOpts = program.opts();
+
+    try {
+      validateName(name);
+
+      if (!teammateExists(name)) {
+        handleError(new Error(`Teammate '${name}' not found`), globalOpts.json);
+        return;
+      }
+
+      await ensureDaemonRunning();
+
+      const taskId = await reinitTeammateViaDaemon(name, {
+        prompt: options.prompt,
+      });
+
+      if (options.wait) {
+        if (!globalOpts.json) {
+          process.stdout.write(`[${name}] Reinitializing memory...\r`);
+        }
+
+        const task = await waitForTask(taskId);
+
+        if (globalOpts.json) {
+          console.log(JSON.stringify({ name, taskId, task }, null, 2));
+        } else if (task.status === "error") {
+          console.error(`[${name}] Error: ${task.error}`);
+        } else {
+          console.log(`[${name}] ${task.result || "(done)"}`);
+        }
+      } else if (globalOpts.json) {
+        console.log(JSON.stringify({ name, taskId, status: "dispatched" }, null, 2));
+      } else {
+        console.log(`✓ Reinit started for '${name}' (task: ${taskId})`);
+        console.log(`  Run 'letta-teams tasks' to see all, or 'letta-teams task ${taskId} --wait' to follow`);
       }
     } catch (error) {
       handleError(error, globalOpts.json);

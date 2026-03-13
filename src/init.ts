@@ -7,15 +7,18 @@ function quoteBlock(value: string): string {
     .join("\n");
 }
 
+function optionalPromptSection(title: string, value?: string): string {
+  if (!value) return "";
+  return `\n## ${title}\n${quoteBlock(value)}\n`;
+}
+
 /**
  * Build the background initialization prompt for a teammate.
  * This uses the teammate's role and optional spawn prompt to ask the agent
  * to initialize durable memory for future work.
  */
 export function buildInitPrompt(state: TeammateState): string {
-  const spawnPromptSection = state.spawnPrompt
-    ? `\n## Spawn Prompt\n${quoteBlock(state.spawnPrompt)}\n`
-    : "";
+  const spawnPromptSection = optionalPromptSection("Spawn Prompt", state.spawnPrompt);
 
   return `# Background Memory Initialization
 
@@ -93,6 +96,47 @@ At the end, reply with exactly these fields:
 INIT_STATUS: done
 SPECIALIZATION: <short title>
 SUMMARY: <1-3 sentence summary of the durable memory you initialized>`;
+}
+
+export function buildReinitPrompt(state: TeammateState, prompt?: string): string {
+  const spawnPromptSection = optionalPromptSection("Original Spawn Prompt", state.spawnPrompt);
+  const extraPromptSection = optionalPromptSection("Reinit Instructions", prompt);
+
+  return `# Background Memory Reinitialization
+
+You are running a non-destructive memory reinitialization pass as an existing spawned teammate inside letta-teams.
+
+## Identity
+- Name: ${state.name}
+- Role: ${state.role}
+
+${spawnPromptSection}${extraPromptSection}
+## Goal
+Refresh and improve your durable memory so future work is faster, narrower, and more consistent.
+
+This is an update pass, not a reset. Preserve useful durable knowledge, refine organization, and remove only clearly stale, redundant, or low-signal content.
+
+## Rules
+
+1. Do not wipe or replace memory wholesale.
+2. Update existing durable memory in place when possible.
+3. Keep useful identity, role boundaries, project context, and heuristics.
+4. Remove only obvious noise, duplication, or stale content.
+5. Do not store current tasks, transient progress, or short-lived notes.
+6. If memfs is enabled, organize and refine memory there cleanly.
+
+## Memfs
+
+- Memfs enabled: ${state.memfsEnabled ? "yes" : "no"}
+- If memfs is enabled, improve existing memory structure without destructive resets.
+
+## Completion contract
+
+At the end, reply with exactly these fields:
+
+INIT_STATUS: done
+SPECIALIZATION: <short title>
+SUMMARY: <1-3 sentence summary of the durable memory you updated>`;
 }
 
 export interface ParsedInitResult {

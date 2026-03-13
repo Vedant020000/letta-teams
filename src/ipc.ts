@@ -429,3 +429,30 @@ export async function spawnTeammateViaDaemon(
     response.type === "error" ? response.message : "Unexpected response from daemon"
   );
 }
+
+export async function reinitTeammateViaDaemon(
+  teammateName: string,
+  options?: {
+    prompt?: string;
+    timeoutMs?: number;
+    projectDir?: string;
+  }
+): Promise<string> {
+  const response = await sendToDaemon(
+    {
+      type: "reinit",
+      teammateName,
+      prompt: options?.prompt,
+      projectDir: options?.projectDir ?? process.cwd(),
+    },
+    { timeoutMs: options?.timeoutMs ?? 30000 },
+  );
+
+  if (response.type === "accepted") {
+    return response.taskId;
+  }
+
+  throw new Error(
+    response.type === "error" ? response.message : "Unexpected response from daemon"
+  );
+}
