@@ -34,10 +34,6 @@ export interface TeammateState {
   role: string;
   /** Letta agent ID */
   agentId: string;
-  /** Conversation ID (for resuming specific conversations) */
-  conversationId?: string;
-  /** Root/main conversation ID */
-  mainConversationId?: string;
   /** Model used by the agent */
   model?: string;
   /** Rich spawn prompt used for background memory initialization */
@@ -88,8 +84,6 @@ export interface TeammateState {
   initStatus?: InitStatus;
   /** Background init task ID */
   initTaskId?: string;
-  /** Dedicated conversation ID used for initialization */
-  initConversationId?: string;
   /** Error captured during initialization */
   initError?: string;
   /** Selected specialization summary from init */

@@ -91,7 +91,7 @@ describe('agent', () => {
       expect(state.name).toBe('researcher');
       expect(state.role).toBe('Research assistant');
       expect(state.agentId).toBe('agent-new123');
-      expect(state.conversationId).toBe('conv-123');
+      expect(state.targets?.[0]?.conversationId).toBe('conv-123');
       expect(state.status).toBe('idle');
       expect(teammateExists('researcher')).toBe(true);
     });
@@ -218,7 +218,16 @@ describe('agent', () => {
         name: 'coder',
         role: 'Developer',
         agentId: 'agent-test',
-        conversationId: 'conv-test',
+        targets: [
+          {
+            name: 'coder',
+            rootName: 'coder',
+            kind: 'root',
+            conversationId: 'conv-test',
+            createdAt: new Date().toISOString(),
+            lastActiveAt: new Date().toISOString(),
+          },
+        ],
         status: 'idle',
         lastUpdated: new Date().toISOString(),
         createdAt: new Date().toISOString(),

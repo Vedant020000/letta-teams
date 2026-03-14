@@ -162,7 +162,6 @@ async function startBackgroundInit(
   updateTeammate(teammate.name, {
     initStatus: "pending",
     initTaskId: task.id,
-    initConversationId: undefined,
     initError: undefined,
     selectedSpecTitle: undefined,
     initStartedAt: undefined,

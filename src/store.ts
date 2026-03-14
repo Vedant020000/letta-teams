@@ -208,47 +208,11 @@ export function teammateExists(name: string): boolean {
 }
 
 function migrateTeammateState(name: string, state: TeammateState): TeammateState {
-  const rootConversationId = state.mainConversationId ?? state.conversationId;
-  const targets = [...(state.targets || [])];
-
-  if (rootConversationId && !targets.some((target) => target.name === name)) {
-    const createdAt = state.createdAt || new Date().toISOString();
-    const lastActiveAt = state.lastUpdated || createdAt;
-    targets.unshift({
-      name,
-      rootName: name,
-      kind: 'root',
-      conversationId: rootConversationId,
-      createdAt,
-      lastActiveAt,
-      status: state.status === 'error' ? 'error' : state.status === 'working' ? 'running' : 'idle',
-    });
+  // Ensure name matches filename
+  if (state.name !== name) {
+    return { ...state, name };
   }
-
-  if (state.initConversationId && !targets.some((target) => target.name === formatTargetName(name, 'memory'))) {
-    const createdAt = state.initStartedAt || state.createdAt || new Date().toISOString();
-    const lastActiveAt = state.initCompletedAt || state.lastUpdated || createdAt;
-    targets.push({
-      name: formatTargetName(name, 'memory'),
-      rootName: name,
-      forkName: 'memory',
-      kind: 'memory',
-      conversationId: state.initConversationId,
-      parentTargetName: name,
-      parentConversationId: rootConversationId,
-      createdAt,
-      lastActiveAt,
-      status: state.initStatus === 'error' ? 'error' : state.initStatus === 'running' ? 'running' : 'idle',
-    });
-  }
-
-  return {
-    ...state,
-    name,
-    conversationId: rootConversationId,
-    mainConversationId: rootConversationId,
-    targets,
-  };
+  return state;
 }
 
 /**
@@ -281,7 +245,7 @@ export function saveTeammate(state: TeammateState): void {
 }
 
 export function getRootConversationId(state: TeammateState): string | undefined {
-  return state.mainConversationId ?? state.conversationId;
+  return state.targets?.find((t) => t.kind === 'root')?.conversationId;
 }
 
 export function getConversationTarget(rootName: string, targetName: string): ConversationTargetState | null {
@@ -387,13 +351,11 @@ export function updateConversationTarget(
 export function updateTeammate(
   name: string,
   updates: Partial<
-    Pick<TeammateState, 
-      | "status" 
-      | "todo" 
-      | "role" 
+    Pick<TeammateState,
+      | "status"
+      | "todo"
+      | "role"
       | "model"
-      | "conversationId" 
-      | "mainConversationId"
       | "lastUpdated"
       | "currentTask"
       | "pendingTasks"
@@ -412,7 +374,6 @@ export function updateTeammate(
       | "memfsSyncError"
       | "initStatus"
       | "initTaskId"
-      | "initConversationId"
       | "initError"
       | "selectedSpecTitle"
       | "initStartedAt"

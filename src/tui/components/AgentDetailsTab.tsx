@@ -70,6 +70,7 @@ const AgentCard: React.FC<{ agent: TeammateState }> = ({ agent }) => {
   const statusColor = getStatusColor(agent.status);
   const icon = getStatusIcon(agent.status);
   const memfsEnabled = agent.memfsEnabled !== false;
+  const rootConversationId = agent.targets?.find(t => t.kind === 'root')?.conversationId;
 
   return (
     <Box flexDirection="column" borderStyle="single" borderColor="gray" paddingX={1}>
@@ -90,10 +91,10 @@ const AgentCard: React.FC<{ agent: TeammateState }> = ({ agent }) => {
           <Text>{agent.model}</Text>
         </Box>
       )}
-      {agent.conversationId && (
+      {rootConversationId && (
         <Box>
           <Text dimColor>Conversation: </Text>
-          <Text>{truncate(agent.conversationId, 40)}</Text>
+          <Text>{truncate(rootConversationId, 40)}</Text>
         </Box>
       )}
       <Box>

@@ -163,12 +163,12 @@ describe("Agent Module", () => {
 
     it("should spawn a teammate successfully", async () => {
       const state = await spawnTeammate("alice", "Developer");
-      
+
       expect(state.name).toBe("alice");
       expect(state.role).toBe("Developer");
       expect(state.agentId).toBe("mock-agent-id");
       expect(state.status).toBe("idle");
-      expect(state.conversationId).toBeDefined();
+      expect(state.targets?.[0]?.conversationId).toBeDefined();
       expect(store.saveTeammate).toHaveBeenCalled();
     });
 
@@ -298,7 +298,16 @@ describe("Agent Module", () => {
       name: "alice",
       role: "Developer",
       agentId: "agent-123",
-      conversationId: "conv-123",
+      targets: [
+        {
+          name: "alice",
+          rootName: "alice",
+          kind: "root" as const,
+          conversationId: "conv-123",
+          createdAt: new Date().toISOString(),
+          lastActiveAt: new Date().toISOString(),
+        },
+      ],
       status: "idle" as const,
       lastUpdated: new Date().toISOString(),
       createdAt: new Date().toISOString(),
@@ -308,6 +317,14 @@ describe("Agent Module", () => {
       vi.mocked(store.getApiKey).mockReturnValue("test-key");
       vi.mocked(store.loadTeammate).mockReturnValue(mockTeammate);
       vi.mocked(store.updateStatus).mockImplementation(() => mockTeammate);
+      vi.mocked(store.getConversationTarget).mockImplementation((rootName: string, targetName: string) => ({
+        name: targetName,
+        rootName,
+        kind: "root" as const,
+        conversationId: "conv-123",
+        createdAt: new Date().toISOString(),
+        lastActiveAt: new Date().toISOString(),
+      }));
     });
 
     it("should send message and return response", async () => {
@@ -334,10 +351,10 @@ describe("Agent Module", () => {
     it("should throw if no conversation ID", async () => {
       vi.mocked(store.loadTeammate).mockReturnValue({
         ...mockTeammate,
-        conversationId: undefined,
+        targets: [],
       });
       vi.mocked(store.getConversationTarget).mockReturnValue(null);
-      
+
       await expect(messageTeammate("alice", "Hello!")).rejects.toThrow(
         "no conversation ID"
       );

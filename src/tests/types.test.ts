@@ -24,7 +24,16 @@ describe('types', () => {
         role: 'Software developer',
         agentId: 'agent-456',
         model: 'claude-sonnet-4-20250514',
-        conversationId: 'conv-789',
+        targets: [
+          {
+            name: 'coder',
+            rootName: 'coder',
+            kind: 'root',
+            conversationId: 'conv-789',
+            createdAt: '2026-03-06T09:00:00Z',
+            lastActiveAt: '2026-03-06T10:00:00Z',
+          },
+        ],
         memfsEnabled: true,
         memfsStartup: 'background',
         status: 'working',
@@ -34,7 +43,7 @@ describe('types', () => {
       };
 
       expect(state.model).toBe('claude-sonnet-4-20250514');
-      expect(state.conversationId).toBe('conv-789');
+      expect(state.targets?.[0]?.conversationId).toBe('conv-789');
       expect(state.todo).toBe('Implementing feature');
       expect(state.memfsEnabled).toBe(true);
       expect(state.memfsStartup).toBe('background');

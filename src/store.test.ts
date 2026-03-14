@@ -102,18 +102,7 @@ describe("Store Module", () => {
     it("should load a teammate", () => {
       saveTeammate(mockTeammate);
       const loaded = loadTeammate("test-agent");
-      expect(loaded).toMatchObject({
-        ...mockTeammate,
-        mainConversationId: mockTeammate.conversationId,
-      });
-      expect(loaded?.targets).toEqual([
-        expect.objectContaining({
-          name: "test-agent",
-          rootName: "test-agent",
-          kind: "root",
-          conversationId: "conv-123",
-        }),
-      ]);
+      expect(loaded).toMatchObject(mockTeammate);
     });
 
     it("should return null for non-existent teammate", () => {
@@ -447,17 +436,26 @@ describe("Store Module", () => {
         lastUpdated: new Date().toISOString(),
         createdAt: new Date().toISOString(),
       });
-      
+
       saveTeammate({
         name: "good-agent",
         role: "Test",
         agentId: "agent-2",
-        conversationId: "conv-123",
+        targets: [
+          {
+            name: "good-agent",
+            rootName: "good-agent",
+            kind: "root",
+            conversationId: "conv-123",
+            createdAt: new Date().toISOString(),
+            lastActiveAt: new Date().toISOString(),
+          },
+        ],
         status: "idle",
         lastUpdated: new Date().toISOString(),
         createdAt: new Date().toISOString(),
       });
-      
+
       const broken = findBrokenTeammates();
       expect(broken).toHaveLength(1);
       expect(broken[0].name).toBe("broken-agent");

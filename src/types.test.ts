@@ -117,8 +117,8 @@ describe("Types Module", () => {
         lastUpdated: new Date().toISOString(),
         createdAt: new Date().toISOString(),
       };
-      
-      expect(state.conversationId).toBeUndefined();
+
+      expect(state.targets).toBeUndefined();
     });
 
     it("should accept TeammateState with all optional fields", () => {
@@ -126,7 +126,6 @@ describe("Types Module", () => {
         name: "test",
         role: "Test role",
         agentId: "agent-123",
-        conversationId: "conv-123",
         model: "zai/glm-5",
         memfsEnabled: true,
         memfsStartup: "blocking",

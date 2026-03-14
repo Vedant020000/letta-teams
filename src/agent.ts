@@ -522,8 +522,6 @@ letta-teams update-progress ${name} --done
       name,
       role,
       agentId,
-      conversationId,
-      mainConversationId: conversationId,
       model,
       spawnPrompt: options.spawnPrompt,
       targets: [
@@ -670,19 +668,7 @@ export async function messageTeammate(
 
   checkApiKey();
 
-  const target = parsed.isRoot
-    ? (getConversationTarget(rootName, rootName) ?? (state.conversationId
-        ? {
-            name: rootName,
-            rootName,
-            kind: 'root' as const,
-            conversationId: state.conversationId,
-            createdAt: state.createdAt,
-            lastActiveAt: state.lastUpdated,
-            status: state.status === 'error' ? 'error' : state.status === 'working' ? 'running' : 'idle',
-          }
-        : null))
-    : getConversationTarget(rootName, targetName);
+  const target = getConversationTarget(rootName, targetName);
 
   if (!target?.conversationId) {
     if (parsed.isRoot) {
