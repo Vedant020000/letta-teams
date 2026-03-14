@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { TeammateState } from "./types.js";
+import { getMemoryConversationId } from "./store.js";
 
 export const MEMORY_FS_ROOT = ".letta";
 export const MEMORY_FS_AGENTS_DIR = "agents";
@@ -252,6 +253,8 @@ export function updateTeammateInitScaffold(state: TeammateState): void {
   if (!state.memfsEnabled) return;
   ensureMemoryFilesystemDirs(state.agentId);
 
+  const memoryConversationId = getMemoryConversationId(state.name);
+
   writeMemoryFile(
     state.agentId,
     "system/init/status.md",
@@ -260,7 +263,7 @@ export function updateTeammateInitScaffold(state: TeammateState): void {
 ## Initialization
 - Status: ${state.initStatus || "pending"}
 - Init task ID: ${state.initTaskId || "pending"}
-- Init conversation ID: ${state.initConversationId || "none"}
+- Init conversation ID: ${memoryConversationId || "none"}
 - Init started at: ${state.initStartedAt || "not started"}
 - Init completed at: ${state.initCompletedAt || "not completed"}
 - Selected specialization: ${state.selectedSpecTitle || "none"}

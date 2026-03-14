@@ -300,6 +300,21 @@ export function listConversationTargets(rootName: string): ConversationTargetSta
   return loadTeammate(rootName)?.targets || [];
 }
 
+/**
+ * Get the memory target for a teammate (if any)
+ */
+export function getMemoryTarget(rootName: string): ConversationTargetState | undefined {
+  const teammate = loadTeammate(rootName);
+  return teammate?.targets?.find((t) => t.kind === 'memory');
+}
+
+/**
+ * Get the memory conversation ID for a teammate
+ */
+export function getMemoryConversationId(rootName: string): string | undefined {
+  return getMemoryTarget(rootName)?.conversationId;
+}
+
 export function targetExists(targetName: string): boolean {
   const parsed = parseTargetName(targetName);
   if (parsed.isRoot) {

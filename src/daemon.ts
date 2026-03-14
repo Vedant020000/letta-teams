@@ -29,6 +29,10 @@ import {
   getConversationTarget,
   loadTeammate,
   updateTeammate,
+  createConversationTarget,
+  updateConversationTarget,
+  getRootConversationId,
+  getMemoryTarget,
 } from "./store.js";
 import type { ConversationTargetState, DaemonMessage, DaemonResponse, TaskState, TeammateState } from "./types.js";
 import { buildInitPrompt, buildReinitPrompt, parseInitResult } from "./init.js";
@@ -197,7 +201,8 @@ async function processInitTask(taskId: string, teammateName: string, prompt: str
 
   try {
     checkApiKey();
-    if (!loadTeammate(teammateName)) {
+    const teammate = loadTeammate(teammateName);
+    if (!teammate) {
       throw new Error(`Teammate '${teammateName}' not found`);
     }
 
@@ -212,13 +217,40 @@ async function processInitTask(taskId: string, teammateName: string, prompt: str
       completedAt,
     });
 
+    // Update init status fields
     updateTeammate(teammateName, {
       initStatus: parsed.initStatus,
-      initConversationId: initRun.conversationId,
       selectedSpecTitle: parsed.selectedSpecTitle,
       initCompletedAt: completedAt,
       initError: parsed.initStatus === "done" ? undefined : result,
     });
+
+    // Create or update memory target with init conversation
+    if (initRun.conversationId) {
+      const rootConversationId = getRootConversationId(teammate);
+      const existingMemoryTarget = getMemoryTarget(teammateName);
+
+      if (existingMemoryTarget) {
+        // Update existing memory target
+        updateConversationTarget(teammateName, existingMemoryTarget.name, {
+          conversationId: initRun.conversationId,
+          lastActiveAt: completedAt,
+          status: parsed.initStatus === "done" ? "idle" : "error",
+        });
+      } else {
+        // Create new memory target
+        createConversationTarget(teammateName, {
+          forkName: "memory",
+          conversationId: initRun.conversationId,
+          parentTargetName: teammateName,
+          parentConversationId: rootConversationId,
+          createdAt: startedAt,
+          lastActiveAt: completedAt,
+          status: parsed.initStatus === "done" ? "idle" : "error",
+        });
+      }
+    }
+
     {
       const current = loadTeammate(teammateName);
       if (current) {
