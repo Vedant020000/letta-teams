@@ -45,12 +45,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/letta-ai/letta-teams.git"
+    "url": "https://github.com/Vedant020000/letta-teams.git"
   },
   "bugs": {
-    "url": "https://github.com/letta-ai/letta-teams/issues"
+    "url": "https://github.com/Vedant020000/letta-teams/issues"
   },
-  "homepage": "https://github.com/letta-ai/letta-teams#readme",
+  "homepage": "https://github.com/Vedant020000/letta-teams#readme",
   "engines": {
     "node": ">=18.0.0"
   },
