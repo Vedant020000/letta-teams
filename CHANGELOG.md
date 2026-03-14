@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-03-14
+
+### Added
+- Memfs support for durable agent memory filesystem
+- Background memory initialization with `--init-prompt` flag
+- `--skip-init` flag to disable memory initialization on spawn
+- `--no-memfs` flag to disable memfs for a teammate
+- Non-destructive memory reinitialization with `lteams reinit` command
+- Conversation forking and multi-target messaging support
+- Init conversation stored as a memory target for traceability
+- Memfs status display in TUI agent details
+
+### Fixed
+- CI release workflow updated to Node 24 with npm cache
+
 ## [0.3.0] - 2025-03-12
 
 ### Added
