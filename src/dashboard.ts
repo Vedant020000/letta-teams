@@ -100,10 +100,21 @@ export interface DashboardData {
   idle: string[];
 }
 
+export interface DashboardRenderOptions {
+  detail?: boolean;
+  verbose?: boolean;
+}
+
+export interface DashboardQueryOptions {
+  limit?: number;
+  sinceMinutes?: number;
+}
+
 /**
  * Get dashboard data by combining teammates and tasks
  */
-export function getDashboardData(limit: number = DEFAULT_LIMIT): DashboardData {
+export function getDashboardData(options: DashboardQueryOptions = {}): DashboardData {
+  const { limit = DEFAULT_LIMIT, sinceMinutes = 24 * 60 } = options;
   let teammates: TeammateState[];
   let tasks: TaskState[];
   
@@ -131,9 +142,15 @@ export function getDashboardData(limit: number = DEFAULT_LIMIT): DashboardData {
     }));
 
   // RECENT: Completed or error tasks, sorted by completion time
+  const cutoffMs = Date.now() - (sinceMinutes * 60 * 1000);
+
   const recent = tasks
     .filter(t => t.status === "done" || t.status === "error")
     .filter(t => t.completedAt) // Must have completion time
+    .filter((t) => {
+      const completedMs = new Date(t.completedAt as string).getTime();
+      return completedMs >= cutoffMs;
+    })
     .sort((a, b) => {
       const aTime = a.completedAt ? new Date(a.completedAt).getTime() : 0;
       const bTime = b.completedAt ? new Date(b.completedAt).getTime() : 0;
@@ -153,13 +170,16 @@ export function getDashboardData(limit: number = DEFAULT_LIMIT): DashboardData {
 /**
  * Render the dashboard to console
  */
-export function renderDashboard(data: DashboardData, verbose: boolean = false): void {
+export function renderDashboard(data: DashboardData, options: DashboardRenderOptions = {}): void {
+  const { detail = false, verbose = false } = options;
   const useAnsi = supportsAnsi();
   const a = useAnsi ? ANSI : { ...ANSI, reset: "", bold: "", dim: "", cyan: "", green: "", yellow: "", red: "", gray: "" };
-  const sectionLine = `${a.dim}${"─".repeat(64)}${a.reset}`;
+
+  const workingNow = data.now.filter((item) => item.status === 'working');
+  const blockedNow = data.now.filter((item) => item.status === 'error' || item.phase === 'blocked');
 
   const summary = [
-    `${a.yellow}${data.now.length}${a.reset} active`,
+    `${a.yellow}${workingNow.length + blockedNow.length}${a.reset} active`,
     `${a.green}${data.recent.length}${a.reset} recent`,
     `${a.gray}${data.idle.length}${a.reset} idle`,
   ].join(`${a.dim} · ${a.reset}`);
@@ -172,34 +192,50 @@ export function renderDashboard(data: DashboardData, verbose: boolean = false): 
   // NOW SECTION
   // ═══════════════════════════════════════════════════════════════
 
-  if (data.now.length > 0) {
+  if (workingNow.length > 0) {
     console.log(`${a.bold}NOW${a.reset}`);
-    console.log(sectionLine);
+    console.log();
 
-    for (const item of data.now) {
+    for (const item of workingNow) {
       const statusIcon = item.status === "working" ? `${a.yellow}●${a.reset}` : `${a.red}○${a.reset}`;
-      const statusText = item.status === "working" ? "working" : "problem";
-      const phaseText = item.phase ? `${a.dim}[${formatPhase(item.phase)}]${a.reset}` : "";
+      const phaseText = item.phase ? formatPhase(item.phase) : 'WORKING';
+      const progressText = item.progress !== undefined ? `${item.progress}%` : '-';
+      const primary = truncate(item.message || item.currentTodoTitle || '-', TRUNCATE_WIDTH);
 
-      // Name and status
       const name = item.name.padEnd(12).slice(0, 12);
-      console.log(`${name}  ${statusIcon} ${statusText.padEnd(7)} ${phaseText}`.trimEnd());
-
-      // Summary message
-      if (item.message) {
-        const task = truncate(item.message, TRUNCATE_WIDTH);
+      if (!detail && !verbose) {
+        console.log(`${name}  ${statusIcon} ${phaseText.padEnd(13)} ${progressText.padStart(4)}  ${primary}`);
+      } else {
         const progress = item.progress !== undefined ? ` [${renderProgressBar(item.progress, 5)}] ${item.progress}%` : "";
-        console.log(`  ${a.dim}↳ ${task}${progress}${a.reset}`);
+        console.log(`${name}  ${statusIcon} ${a.dim}[${phaseText}]${a.reset}`);
+        if (item.message) {
+          console.log(`  ${a.dim}↳ ${truncate(item.message, TRUNCATE_WIDTH)}${progress}${a.reset}`);
+        }
+        if (item.currentTodoTitle) {
+          console.log(`  ${a.dim}• todo: ${truncate(item.currentTodoTitle, TRUNCATE_WIDTH)}${a.reset}`);
+        }
       }
 
-      if (item.currentTodoTitle) {
-        console.log(`  ${a.dim}• todo: ${truncate(item.currentTodoTitle, TRUNCATE_WIDTH)}${a.reset}`);
-      }
+      console.log();
+    }
+  }
 
-      // Problem if any
-      if (item.problem) {
-        const problem = truncate(item.problem, TRUNCATE_WIDTH);
-        console.log(`  ${a.red}⚠ ${problem}${a.reset}`);
+  if (blockedNow.length > 0) {
+    console.log(`${a.bold}BLOCKED${a.reset}`);
+    console.log();
+
+    for (const item of blockedNow) {
+      const name = item.name.padEnd(12).slice(0, 12);
+      const reason = truncate(item.problem || item.message || 'Blocked', TRUNCATE_WIDTH);
+
+      if (!detail && !verbose) {
+        console.log(`${name}  ${a.red}○${a.reset} BLOCKED        ${reason}`);
+      } else {
+        console.log(`${name}  ${a.red}○${a.reset} ${a.dim}[BLOCKED]${a.reset}`);
+        console.log(`  ${a.red}⚠ ${reason}${a.reset}`);
+        if (item.currentTodoTitle) {
+          console.log(`  ${a.dim}• todo: ${truncate(item.currentTodoTitle, TRUNCATE_WIDTH)}${a.reset}`);
+        }
       }
 
       console.log();
@@ -212,31 +248,31 @@ export function renderDashboard(data: DashboardData, verbose: boolean = false): 
 
   if (data.recent.length > 0) {
     console.log(`${a.bold}RECENT${a.reset}`);
-    console.log(sectionLine);
+    console.log();
 
     for (const task of data.recent) {
       const statusIcon = task.status === "done" ? `${a.green}✓${a.reset}` : `${a.red}✗${a.reset}`;
-      const statusText = task.status === "done" ? "done" : "error";
       const time = task.completedAt ? formatRelativeTime(task.completedAt) : "?";
+      const msg = truncate(task.message || '-', TRUNCATE_WIDTH);
 
-      // Name and status
       const name = task.teammateName.padEnd(12).slice(0, 12);
-      console.log(`${name}  ${statusIcon} ${statusText.padEnd(5)}  ${a.dim}${time}${a.reset}`);
+      if (!detail && !verbose) {
+        console.log(`${statusIcon} ${name} ${a.dim}${time.padStart(7)}${a.reset}  ${msg}`);
+      } else {
+        const statusText = task.status === "done" ? "done" : "error";
+        console.log(`${name}  ${statusIcon} ${statusText.padEnd(5)}  ${a.dim}${time}${a.reset}`);
+        if (task.message) {
+          console.log(`  ${a.dim}↳ ${truncate(task.message, TRUNCATE_WIDTH)}${a.reset}`);
+        }
 
-      // Message (what was asked)
-      if (task.message) {
-        const msg = truncate(task.message, TRUNCATE_WIDTH);
-        console.log(`  ${a.dim}↳ ${msg}${a.reset}`);
-      }
-
-      // Result or error
-      const content = task.status === "done" ? task.result : task.error;
-      if (content) {
-        const lines = verbose ? getFirstLines(content, 10) : getFirstLines(content, 2);
-        for (const line of lines) {
-          const truncated = truncate(line, TRUNCATE_WIDTH);
-          const color = task.status === "done" ? a.dim : a.red;
-          console.log(`  ${color}${truncated}${a.reset}`);
+        const content = task.status === "done" ? task.result : task.error;
+        if (content) {
+          const lines = verbose ? getFirstLines(content, 10) : getFirstLines(content, 1);
+          for (const line of lines) {
+            const truncated = truncate(line, TRUNCATE_WIDTH);
+            const color = task.status === "done" ? a.dim : a.red;
+            console.log(`  ${color}${truncated}${a.reset}`);
+          }
         }
       }
 
@@ -250,9 +286,13 @@ export function renderDashboard(data: DashboardData, verbose: boolean = false): 
 
   if (data.idle.length > 0) {
     console.log(`${a.bold}IDLE${a.reset}`);
-    console.log(sectionLine);
+    console.log();
 
-    const idleList = data.idle.join(", ");
+    const MAX_IDLE_NAMES = 6;
+    const shown = data.idle.slice(0, MAX_IDLE_NAMES);
+    const extra = data.idle.length - shown.length;
+    const suffix = extra > 0 ? ` +${extra} more` : '';
+    const idleList = `${shown.join(", ")}${suffix}`;
     console.log(`${a.gray}${idleList}${a.reset}`);
     console.log();
   }
@@ -266,14 +306,22 @@ export function renderDashboard(data: DashboardData, verbose: boolean = false): 
 /**
  * Display dashboard once and exit
  */
-export function displayDashboard(options: { limit?: number; verbose?: boolean; json?: boolean } = {}): void {
-  const { limit = DEFAULT_LIMIT, verbose = false, json = false } = options;
-  const data = getDashboardData(limit);
+export function displayDashboard(
+  options: { limit?: number; detail?: boolean; verbose?: boolean; json?: boolean; sinceMinutes?: number } = {},
+): void {
+  const {
+    limit = DEFAULT_LIMIT,
+    detail = false,
+    verbose = false,
+    json = false,
+    sinceMinutes = 24 * 60,
+  } = options;
+  const data = getDashboardData({ limit, sinceMinutes });
 
   if (json) {
     console.log(JSON.stringify(data, null, 2));
   } else {
-    renderDashboard(data, verbose);
+    renderDashboard(data, { detail, verbose });
   }
 }
 
@@ -281,5 +329,5 @@ export function displayDashboard(options: { limit?: number; verbose?: boolean; j
  * Get a one-time snapshot (for programmatic use)
  */
 export function getSnapshot(): DashboardData {
-  return getDashboardData(DEFAULT_LIMIT);
+  return getDashboardData({ limit: DEFAULT_LIMIT });
 }

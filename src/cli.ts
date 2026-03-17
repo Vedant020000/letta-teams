@@ -1159,6 +1159,21 @@ statusCommand.action(() => {
   console.log('Usage: status update|events|checkin ...');
 });
 
+function parseDurationToMinutes(input: string): number {
+  const value = String(input).trim().toLowerCase();
+  const match = value.match(/^(\d+)([mhd])?$/);
+  if (!match) {
+    throw new Error(`Invalid --since value '${input}'. Use formats like 30m, 6h, 2d, or raw minutes.`);
+  }
+
+  const amount = parseInt(match[1], 10);
+  const unit = match[2] || 'm';
+
+  if (unit === 'm') return amount;
+  if (unit === 'h') return amount * 60;
+  return amount * 24 * 60;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // DASHBOARD COMMAND
 // ═══════════════════════════════════════════════════════════════
@@ -1167,15 +1182,31 @@ program
   .command("dashboard")
   .description("Show what's happening now - active work, recent activity, and idle teammates")
   .option("--limit <number>", "Number of recent items to show (default: 10)", "10")
+  .option("--detail", "Show 2-line detail per item")
   .option("--verbose", "Show full task results instead of truncated")
+  .option("--since <duration>", "Recent window: 30m, 6h, 2d, or minutes (default: 24h)", "24h")
   .option("--json", "Output as JSON")
   .action((options) => {
     const globalOpts = program.opts();
     const jsonMode = globalOpts.json || options.json;
     const limit = parseInt(options.limit, 10);
+    const detail = options.detail || false;
     const verbose = options.verbose || false;
+    let sinceMinutes: number;
+    try {
+      sinceMinutes = parseDurationToMinutes(options.since);
+    } catch (error) {
+      handleError(error as Error, jsonMode);
+      return;
+    }
 
-    displayDashboard({ limit, verbose, json: jsonMode });
+    displayDashboard({
+      limit,
+      detail,
+      verbose,
+      json: jsonMode,
+      sinceMinutes,
+    });
   });
 
 // ═══════════════════════════════════════════════════════════════
