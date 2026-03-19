@@ -44,6 +44,8 @@ import {
   listTasks,
   getDaemonLogPath,
   reinitTeammateViaDaemon,
+  killTeammateViaDaemon,
+  startCouncilViaDaemon,
 } from "./ipc.js";
 import { getDaemonPort } from "./daemon.js";
 
@@ -151,6 +153,12 @@ describe("IPC Module", () => {
                 case "reinit":
                   socket.write(JSON.stringify({ type: "accepted", taskId: "task-reinit-123" }) + "\n");
                   break;
+                case "kill":
+                  socket.write(JSON.stringify({ type: "killed", name: msg.name, cancelled: 2 }) + "\n");
+                  break;
+                case "council_start":
+                  socket.write(JSON.stringify({ type: "council_started", sessionId: "council-abc" }) + "\n");
+                  break;
                 default:
                   socket.write(JSON.stringify({ type: "error", message: "Unknown type" }) + "\n");
               }
@@ -256,6 +264,22 @@ describe("IPC Module", () => {
       });
 
       expect(taskId).toBe("task-reinit-123");
+    });
+
+    it("should send kill message and receive killed response", async () => {
+      const result = await killTeammateViaDaemon("alice", { projectDir: "/project" });
+      expect(result.name).toBe("alice");
+      expect(result.cancelled).toBe(2);
+    });
+
+    it("should send council_start and receive council_started", async () => {
+      const result = await startCouncilViaDaemon('Build council plan', {
+        message: 'Do thesis antithesis debate',
+        participantNames: ['alice', 'bob'],
+        maxTurns: 5,
+        projectDir: '/project',
+      });
+      expect(result.sessionId).toBe('council-abc');
     });
 
     it("should timeout on slow response", async () => {

@@ -59,6 +59,7 @@ import {
   waitForTask,
   spawnTeammateViaDaemon,
   reinitTeammateViaDaemon,
+  killTeammateViaDaemon,
   isDaemonRunning,
 } from "./ipc.js";
 import { parseTargetName, validateTargetName } from './targets.js';
@@ -190,6 +191,42 @@ program
           globalOpts.json
         );
       }
+    }
+  });
+
+// ═══════════════════════════════════════════════════════════════
+// KILL COMMAND
+// ═══════════════════════════════════════════════════════════════
+
+program
+  .command("kill <name>")
+  .description("Cancel in-flight tasks for a teammate and mark it done")
+  .action(async (name: string) => {
+    const globalOpts = program.opts();
+
+    try {
+      validateName(name);
+    } catch (error) {
+      handleError(error as Error, globalOpts.json);
+      return;
+    }
+
+    if (!teammateExists(name)) {
+      handleError(new Error(`Teammate '${name}' not found`), globalOpts.json);
+      return;
+    }
+
+    try {
+      await ensureDaemonRunning();
+      const result = await killTeammateViaDaemon(name);
+
+      if (globalOpts.json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(`✓ Killed '${name}' (${result.cancelled} task${result.cancelled === 1 ? '' : 's'} cancelled)`);
+      }
+    } catch (error) {
+      handleError(error as Error, globalOpts.json);
     }
   });
 

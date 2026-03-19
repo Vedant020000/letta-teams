@@ -149,6 +149,12 @@ describe("Daemon Module", () => {
                 case "stop":
                   socket.write(JSON.stringify({ type: "stopped" }) + "\n");
                   break;
+                case "kill":
+                  socket.write(JSON.stringify({ type: "killed", name: msg.name, cancelled: 1 }) + "\n");
+                  break;
+                case "council_start":
+                  socket.write(JSON.stringify({ type: "council_started", sessionId: "council-test" }) + "\n");
+                  break;
                 default:
                   socket.write(JSON.stringify({ type: "error", message: "Unknown type" }) + "\n");
               }
@@ -243,6 +249,29 @@ describe("Daemon Module", () => {
       });
 
       expect(response.type).toBe("stopped");
+    });
+
+    it("should handle kill message", async () => {
+      const response = await sendTestMessage(testPort, {
+        type: "kill",
+        name: "alice",
+        projectDir: "/project",
+      });
+
+      expect(response.type).toBe("killed");
+      expect((response as any).cancelled).toBe(1);
+    });
+
+    it("should handle council_start message", async () => {
+      const response = await sendTestMessage(testPort, {
+        type: 'council_start',
+        prompt: 'Implement X?',
+        message: 'Do thesis and antithesis',
+        projectDir: '/project',
+      });
+
+      expect(response.type).toBe('council_started');
+      expect((response as any).sessionId).toBe('council-test');
     });
 
     it("should handle unknown message type", async () => {

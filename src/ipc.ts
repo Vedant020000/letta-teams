@@ -430,6 +430,62 @@ export async function spawnTeammateViaDaemon(
   );
 }
 
+export async function startCouncilViaDaemon(
+  prompt: string,
+  options?: {
+    message?: string;
+    participantNames?: string[];
+    maxTurns?: number;
+    timeoutMs?: number;
+    projectDir?: string;
+  },
+): Promise<{ sessionId: string }> {
+  const response = await sendToDaemon(
+    {
+      type: 'council_start',
+      prompt,
+      message: options?.message,
+      participantNames: options?.participantNames,
+      maxTurns: options?.maxTurns,
+      projectDir: options?.projectDir ?? process.cwd(),
+    },
+    { timeoutMs: options?.timeoutMs ?? 30000 },
+  );
+
+  if (response.type === 'council_started') {
+    return { sessionId: response.sessionId };
+  }
+
+  throw new Error(
+    response.type === 'error' ? response.message : 'Unexpected response from daemon',
+  );
+}
+
+export async function killTeammateViaDaemon(
+  name: string,
+  options?: {
+    timeoutMs?: number;
+    projectDir?: string;
+  }
+): Promise<{ name: string; cancelled: number }> {
+  const response = await sendToDaemon(
+    {
+      type: "kill",
+      name,
+      projectDir: options?.projectDir ?? process.cwd(),
+    },
+    { timeoutMs: options?.timeoutMs ?? 30000 },
+  );
+
+  if (response.type === "killed") {
+    return { name: response.name, cancelled: response.cancelled };
+  }
+
+  throw new Error(
+    response.type === "error" ? response.message : "Unexpected response from daemon"
+  );
+}
+
 export async function forkTeammateViaDaemon(
   rootName: string,
   forkName: string,

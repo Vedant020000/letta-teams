@@ -270,6 +270,15 @@ export type DaemonMessage =
       prompt?: string;
       projectDir: string;
     }
+  | {
+      type: "council_start";
+      prompt: string;
+      message?: string;
+      participantNames?: string[];
+      maxTurns?: number;
+      projectDir: string;
+    }
+  | { type: "kill"; name: string; projectDir: string }
   | { type: "status"; taskId?: string; projectDir: string }
   | { type: "list"; projectDir: string }
   | { type: "stop" };
@@ -281,6 +290,8 @@ export type DaemonResponse =
   | { type: "accepted"; taskId: string }
   | { type: "spawned"; teammate: TeammateState }
   | { type: "forked"; teammate: TeammateState; target: ConversationTargetState }
+  | { type: "council_started"; sessionId: string }
+  | { type: "killed"; name: string; cancelled: number }
   | { type: "task"; task: TaskState }
   | { type: "tasks"; tasks: TaskState[] }
   | { type: "error"; message: string }

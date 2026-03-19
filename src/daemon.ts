@@ -29,6 +29,7 @@ import {
   getConversationTarget,
   loadTeammate,
   updateTeammate,
+  updateStatus,
   createConversationTarget,
   updateConversationTarget,
   getRootConversationId,
@@ -43,6 +44,7 @@ import {
   updateTeammateInitScaffold,
   syncOwnedMemfsFiles,
 } from "./memfs.js";
+import { generateCouncilSessionId, runCouncilSession } from './council/orchestrator.js';
 
 async function syncTeammateMemfs(teammateName: string, reason: string): Promise<void> {
   const syncing = updateTeammate(teammateName, {
@@ -467,6 +469,58 @@ async function handleMessage(msg: DaemonMessage): Promise<DaemonResponse> {
       });
 
       return { type: "accepted", taskId };
+    }
+
+    case "kill": {
+      setProjectDir(msg.projectDir);
+
+      try {
+        const state = loadTeammate(msg.name);
+        if (!state) {
+          return { type: "error", message: `Teammate '${msg.name}' not found` };
+        }
+
+        const tasks = loadTasks();
+        const now = new Date().toISOString();
+        let cancelled = 0;
+
+        for (const task of Object.values(tasks)) {
+          if (task.teammateName !== msg.name) continue;
+          if (task.status !== "pending" && task.status !== "running") continue;
+          updateTask(task.id, {
+            status: "error",
+            error: "Cancelled by kill",
+            completedAt: now,
+          });
+          cancelled += 1;
+        }
+
+        updateStatus(msg.name, "done");
+
+        return { type: "killed", name: msg.name, cancelled };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { type: "error", message: errorMessage };
+      }
+    }
+
+    case 'council_start': {
+      setProjectDir(msg.projectDir);
+
+      try {
+        const sessionId = generateCouncilSessionId();
+        void runCouncilSession({
+          sessionId,
+          prompt: msg.prompt,
+          message: msg.message,
+          participantNames: msg.participantNames,
+          maxTurns: msg.maxTurns,
+        });
+        return { type: 'council_started', sessionId };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { type: 'error', message: errorMessage };
+      }
     }
 
     case "status": {

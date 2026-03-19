@@ -7,6 +7,7 @@ import {
   createSession,
   resumeSession,
 } from "@letta-ai/letta-code-sdk";
+import type { AnyAgentTool } from "@letta-ai/letta-code-sdk";
 import pLimit from "p-limit";
 import type { TeammateState, MemfsStartup } from "./types.js";
 import { MEMFS_STARTUP_VALUES } from "./types.js";
@@ -767,6 +768,8 @@ export interface MessageEventCallback {
 export interface MessageOptions {
   /** Callback for streaming events (tool calls, results) */
   onEvent?: MessageEventCallback;
+  /** Optional custom tools for this message session (used by council flow) */
+  tools?: AnyAgentTool[];
 }
 
 export interface InitStreamEvent {
@@ -943,7 +946,7 @@ export async function messageTeammate(
   message: string,
   options: MessageOptions = {}
 ): Promise<string> {
-  const { onEvent } = options;
+  const { onEvent, tools } = options;
   const parsed = parseTargetName(name);
   const rootName = parsed.rootName;
   const targetName = parsed.fullName;
@@ -985,6 +988,7 @@ export async function messageTeammate(
         disallowedTools: ["AskUserQuestion", "EnterPlanMode", "ExitPlanMode"],
         memfs: state.memfsEnabled,
         memfsStartup: state.memfsStartup,
+        tools,
       });
 
       // Send message with retry logic

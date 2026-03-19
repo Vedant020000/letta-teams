@@ -333,6 +333,29 @@ describe("Types Module", () => {
       expect(msg.type).toBe("list");
     });
 
+    it("should accept kill message", () => {
+      const msg: DaemonMessage = {
+        type: "kill",
+        name: "alice",
+        projectDir: "/project",
+      };
+
+      expect(msg.type).toBe("kill");
+    });
+
+    it("should accept council_start message", () => {
+      const msg: DaemonMessage = {
+        type: 'council_start',
+        prompt: 'Implement X?',
+        message: 'Discuss thesis/antithesis',
+        participantNames: ['alice', 'bob'],
+        maxTurns: 5,
+        projectDir: '/project',
+      };
+
+      expect(msg.type).toBe('council_start');
+    });
+
     it("should accept stop message", () => {
       const msg: DaemonMessage = {
         type: "stop",
@@ -370,6 +393,25 @@ describe("Types Module", () => {
       };
       
       expect(resp.type).toBe("spawned");
+    });
+
+    it("should accept killed response", () => {
+      const resp: DaemonResponse = {
+        type: "killed",
+        name: "alice",
+        cancelled: 1,
+      };
+
+      expect(resp.type).toBe("killed");
+    });
+
+    it('should accept council_started response', () => {
+      const resp: DaemonResponse = {
+        type: 'council_started',
+        sessionId: 'council-abc',
+      };
+
+      expect(resp.type).toBe('council_started');
     });
 
     it("should accept task response", () => {
