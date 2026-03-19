@@ -1,5 +1,20 @@
 # Changelog
 
+# [0.6.0](https://github.com/Vedant020000/letta-teams/compare/v0.5.1...v0.6.0) (2026-03-19)
+
+
+### Features
+
+* **council:** add daemon-backed council orchestration and CLI flows ([b004ba7](https://github.com/Vedant020000/letta-teams/commit/b004ba7851b584a5f02c59097eb58119d8b6388b))
+* **dashboard:** add compact agent-first view with recency filters ([0459e4a](https://github.com/Vedant020000/letta-teams/commit/0459e4a0169024ceadc5b19dbb01bdc490726b5d))
+* **init:** finish init state wiring and release trigger ([bc8bb2e](https://github.com/Vedant020000/letta-teams/commit/bc8bb2e6260a473a26421f94ec1eb92470951bbd))
+* **memory:** expand teammate memory contracts and memfs scaffolding ([5fcffd0](https://github.com/Vedant020000/letta-teams/commit/5fcffd0c7f1d4ccd757ada232cc8d6537d016dbf))
+* **skill:** add scoped skill install command and README primary section ([deb5ac9](https://github.com/Vedant020000/letta-teams/commit/deb5ac9fc8144cd7fb531e0c4c2af0ff3cf4a09b))
+* **status:** migrate CLI/TUI/dashboard to TODO+STATUS channels ([1cb9d19](https://github.com/Vedant020000/letta-teams/commit/1cb9d198b526c7376aeb99335ed21cf6e2ee078e))
+* **tasks:** add internal task kinds and visibility controls ([5d3b546](https://github.com/Vedant020000/letta-teams/commit/5d3b546866465832eaa12d28bb2a9ab67cb6c640))
+* **tasks:** add live watch command for task streaming ([ab920a0](https://github.com/Vedant020000/letta-teams/commit/ab920a0225f4cbfb641005b037c7ad554152cf0d))
+* **updater:** add update notifications and manual update command ([a1593ef](https://github.com/Vedant020000/letta-teams/commit/a1593efb68b75e3a285145c3b7688d8b025acd1e))
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
