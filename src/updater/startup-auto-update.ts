@@ -1,6 +1,7 @@
-import type { AutoUpdateResult } from "./auto-update.js";
+import type { UpdateCheckResult } from './auto-update.js';
 
 export interface UpdateNotification {
+  currentVersion: string;
   latestVersion: string;
 }
 
@@ -9,18 +10,13 @@ export interface UpdateNotification {
  * Returns a notification if an update was applied
  */
 export function startStartupAutoUpdateCheck(
-  checkAndAutoUpdate: () => Promise<AutoUpdateResult | undefined>,
-  logError: (...args: unknown[]) => void = console.error,
+  checkForNotification: () => Promise<UpdateCheckResult | undefined>,
+  _logError: (...args: unknown[]) => void = console.error,
 ): Promise<UpdateNotification | undefined> {
-  return checkAndAutoUpdate()
+  return checkForNotification()
     .then((result) => {
-      if (result?.enotemptyFailed) {
-        logError("\n⚠️  Auto-update failed (ENOTEMPTY).");
-        logError("Fix: rm -rf $(npm prefix -g)/lib/node_modules/letta-teams && npm i -g letta-teams\n");
-      }
-
-      if (result?.updateApplied && result.latestVersion) {
-        return { latestVersion: result.latestVersion };
+      if (result?.updateAvailable && result.latestVersion) {
+        return { currentVersion: result.currentVersion, latestVersion: result.latestVersion };
       }
 
       return undefined;
