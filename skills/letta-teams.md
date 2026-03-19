@@ -195,6 +195,13 @@ letta-teams spawn dev "Developer" --force
 
 Use council when you want multiple teammates to deliberate and produce one final decision.
 
+Council execution model:
+- Participants submit opinions only.
+- Review and final reporting are done by a **disposable reviewer agent** spawned internally by `letta-teams`.
+- Reviewer model: `letta/auto`.
+- Reviewer uses dedicated review instructions/memory blocks for consistent decision quality.
+- Reviewer is deleted after use (not persisted as a teammate).
+
 ```bash
 # Start council
 letta-teams agent-council --prompt "Choose the safest rollout plan for auth migration"
