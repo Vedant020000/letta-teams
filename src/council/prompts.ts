@@ -23,6 +23,37 @@ export function buildCouncilKickoffPrompt(input: {
   ].filter(Boolean).join('\n');
 }
 
+export function buildCouncilReviewerPrompt(input: {
+  sessionId: string;
+  turn: number;
+  prompt: string;
+  opinions: CouncilOpinionRecord[];
+  previousSynthesis?: string;
+  customMessage?: string;
+}): string {
+  return [
+    `Council session: ${input.sessionId}`,
+    `Turn: ${input.turn}`,
+    input.customMessage ? `Coordinator message: ${input.customMessage}` : undefined,
+    '',
+    'Original prompt:',
+    input.prompt,
+    '',
+    input.previousSynthesis ? `Previous synthesis:\n${input.previousSynthesis}\n` : undefined,
+    'Participant opinions (JSON):',
+    JSON.stringify(input.opinions, null, 2),
+    '',
+    'Return ONLY JSON with schema:',
+    '{',
+    '  "decision": "continue" | "finalize",',
+    '  "summary": "string",',
+    '  "final_plan_markdown": "string (required when decision=finalize)",',
+    '  "confidence": 0,',
+    '  "next_focus": ["string"]',
+    '}',
+  ].filter(Boolean).join('\n');
+}
+
 export function buildCouncilSynthesisPrompt(input: {
   sessionId: string;
   turn: number;

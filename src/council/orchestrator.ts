@@ -1,8 +1,9 @@
 import { checkApiKey, messageTeammate } from '../agent.js';
 import { listTeammates } from '../store.js';
-import { buildCouncilFinalPlan, buildCouncilKickoffPrompt, buildCouncilVotePrompt } from './prompts.js';
+import { buildCouncilFinalPlan, buildCouncilKickoffPrompt } from './prompts.js';
 import { cancelRunsForCouncil } from './cancel.js';
 import { createCouncilTools } from './tools.js';
+import { runDisposableCouncilReviewer } from './reviewer.js';
 import {
   ensureCouncilTurn,
   initCouncilSession,
@@ -17,36 +18,6 @@ import type { CouncilSessionMeta } from './types.js';
 
 export function generateCouncilSessionId(): string {
   return `council-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function allParticipantsVoted(meta: CouncilSessionMeta, turn: number): boolean {
-  const votesBy = meta.turns[String(turn)]?.votesBy || {};
-  return meta.participants.every((name) => Boolean(votesBy[name]));
-}
-
-function isUnanimousAgree(meta: CouncilSessionMeta, turn: number): boolean {
-  const votesBy = meta.turns[String(turn)]?.votesBy || {};
-  return meta.participants.every((name) => votesBy[name] === 'agree');
-}
-
-function synthesizeOpinions(sessionId: string, turn: number): string {
-  const opinions = listCouncilOpinions(sessionId, turn);
-  if (opinions.length === 0) {
-    return `No opinions were submitted for turn ${turn}.`;
-  }
-
-  const lines: string[] = [`# Turn ${turn} key points`, ''];
-  for (const opinion of opinions) {
-    lines.push(`## ${opinion.agentName} (${opinion.side})`);
-    lines.push(`- Position: ${opinion.position}`);
-    if (opinion.proposal) lines.push(`- Proposal: ${opinion.proposal}`);
-    if (opinion.risks && opinion.risks.length > 0) lines.push(`- Risks: ${opinion.risks.join('; ')}`);
-    if (opinion.openQuestions && opinion.openQuestions.length > 0) lines.push(`- Open questions: ${opinion.openQuestions.join('; ')}`);
-    lines.push('');
-  }
-
-  lines.push('// TODO(council): replace local synthesis with disposable synthesizer agent run.');
-  return lines.join('\n');
 }
 
 async function processCouncilSession(input: {
@@ -122,18 +93,18 @@ async function processCouncilSession(input: {
     );
 
     meta = loadCouncilSession(sessionId) ?? meta;
+    const opinions = listCouncilOpinions(sessionId, turn);
 
-    if (!allParticipantsVoted(meta, turn)) {
-      for (const participant of participants) {
-        const vote = meta.turns[String(turn)]?.votesBy[participant.name];
-        if (!vote) {
-          markVote(meta, turn, participant.name, 'disagree', 'No submit received in turn window');
-        }
-      }
-      saveCouncilSession(meta);
-    }
+    const reviewerResult = await runDisposableCouncilReviewer({
+      sessionId,
+      turn,
+      councilPrompt: meta.prompt,
+      opinions,
+      previousSynthesis: lastSynthesis || undefined,
+      customMessage: meta.message,
+    });
 
-    const synthesis = synthesizeOpinions(sessionId, turn);
+    const synthesis = reviewerResult.summary;
 
     const synthesisPath = writeCouncilSynthesis(sessionId, turn, synthesis);
     lastSynthesis = synthesis;
@@ -144,28 +115,12 @@ async function processCouncilSession(input: {
     turnState.completedAt = new Date().toISOString();
     saveCouncilSession(meta);
 
-    await Promise.all(
-      participants.map(async (participant) => {
-        const tools = createCouncilTools({ sessionId, turn, agentName: participant.name });
-        const votePrompt = buildCouncilVotePrompt({ turn, synthesis });
-        try {
-          await messageTeammate(participant.name, votePrompt, { tools });
-        } catch {
-          const current = loadCouncilSession(sessionId);
-          if (!current) return;
-          markVote(current, turn, participant.name, 'disagree', 'Vote prompt failed');
-          saveCouncilSession(current);
-        }
-      }),
-    );
-
-    meta = loadCouncilSession(sessionId) ?? meta;
-    if (isUnanimousAgree(meta, turn)) {
+    if (reviewerResult.decision === 'finalize') {
       const finalPlan = buildCouncilFinalPlan({
         sessionId,
         prompt: meta.prompt,
-        synthesis,
-        unanimous: true,
+        synthesis: reviewerResult.finalPlanMarkdown || synthesis,
+        unanimous: false,
         turn,
       });
       const planPath = writeCouncilFinalPlan(sessionId, finalPlan);

@@ -7,75 +7,61 @@
 
 A CLI interface for Letta Code and LettaBot agents to orchestrate teams of stateful AI agents. Spawn specialized teammates, dispatch parallel tasks, and coordinate work across multiple agents with persistent memory.
 
-## Installation + Skill Setup (Primary)
+## Overview
 
-Install the CLI and then install the `letta-teams` skill into your preferred scope.
+Letta Teams helps agents collaborate like a real team, not a single overloaded worker.
+
+Core features:
+- **Teams**: spawn specialized teammates and split work in parallel
+- **Statefulness**: each teammate keeps identity and context across tasks
+- **Memory**: persistent memory + init flows for better long-running coordination
+- **Council**: run structured multi-agent deliberation and get one final decision
+
+## Installation
+
+Install the CLI:
 
 ```bash
-# Install CLI
 npm install -g letta-teams
 ```
 
-```bash
-# Add skill (project scope by default): <resolved-project-dir>/.skills/
-letta-teams skill add letta-teams --scope project
+> [!NOTE]
+> If you want agents to orchestrate through the bundled skill, install it with:
+>
+> ```bash
+> # Project scope (default): <resolved-project-dir>/.skills/
+> letta-teams skill add letta-teams --scope project
+>
+> # Agent scope: ~/.letta/agents/<id>/skills/
+> letta-teams skill add letta-teams --scope agent
+>
+> # Global scope: ~/.letta/skills/
+> letta-teams skill add letta-teams --scope global
+> ```
+>
+> Scope resolution:
+> - `project`: `LETTABOT_WORKING_DIR` → `./lettabot.yaml` (`workingDir`) → `process.cwd()`
+> - `agent`: uses `AGENT_ID` (or `LETTA_AGENT_ID`) from environment
+> - `global`: uses `~/.letta/skills/`
+>
+> Use `--force` to overwrite an existing installed skill:
+>
+> ```bash
+> letta-teams skill add letta-teams --scope project --force
+> ```
 
-# Agent scope: ~/.letta/agents/<id>/skills/
-letta-teams skill add letta-teams --scope agent
+## System Overview
 
-# Global scope: ~/.letta/skills/
-letta-teams skill add letta-teams --scope global
-```
-
-Scope resolution:
-- `project`: `LETTABOT_WORKING_DIR` → `./lettabot.yaml` (`workingDir`) → `process.cwd()`
-- `agent`: uses `AGENT_ID` (or `LETTA_AGENT_ID`) from environment
-- `global`: uses `~/.letta/skills/`
-
-Use `--force` to overwrite an existing installed skill:
-
-```bash
-letta-teams skill add letta-teams --scope project --force
-```
-
-## Overview
-
-Letta Teams provides a command-line interface that AI agents can use to manage their own teams of specialized workers. Instead of a single agent handling every task, an agent can:
-
-- **Spawn specialized teammates** with specific roles and capabilities
-- **Dispatch parallel work** to multiple agents simultaneously
-- **Track progress** across the team
-- **Coordinate complex workflows** through delegation
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Your Letta Code Agent                       │
-│                                                                 │
-│   "I need to implement auth. Let me spawn a backend dev and     │
-│    a test engineer to work in parallel."                        │
-└─────────────────────────────────────────────────────────────────┘
-                                 │
-                                 │  letta-teams spawn backend "..."
-                                 │  letta-teams dispatch backend="..." tests="..."
-                                 ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      Letta Teams CLI                            │
-│                                                                 │
-│   spawn • message • broadcast • dispatch • tasks • dashboard    │
-└─────────────────────────────────────────────────────────────────┘
-                                 │
-                                 ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                           Your Team                             │
-│                                                                 │
-│    ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐    │
-│    │ Backend  │   │ Frontend │   │  Tests   │   │ Reviewer │    │ 
-│    │   Dev    │   │   Dev    │   │          │   │          │    │
-│    └──────────┘   └──────────┘   └──────────┘   └──────────┘    │
-│                                                                 │
-│   Each teammate has persistent memory, file operations,         │
-│   shell execution, and web research capabilities.               │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+  A[Your Letta Code Agent] -->|spawn / dispatch / message| B[letta-teams CLI]
+  B --> C[Daemon]
+  C --> D1[Backend teammate]
+  C --> D2[Frontend teammate]
+  C --> D3[Tests teammate]
+  C --> D4[Reviewer teammate]
+  C --> E[(.lteams state)]
+  C --> F[(tasks.json)]
 ```
 
 Agents can invoke `letta-teams` commands via the Bash tool after installation.
@@ -98,6 +84,11 @@ A **teammate** is a stateful Letta agent with:
 - A unique name and specialized role
 - File operations, shell execution, and web research tools
 - No interactive prompts—they work autonomously
+
+Statefulness in practice:
+- The same teammate keeps evolving context over time (not a fresh stateless run each message)
+- Root + fork targets let one agent run multiple threads while preserving identity
+- Init/reinit can refresh durable memory without replacing the teammate
 
 ### Conversation Targets
 
@@ -126,6 +117,25 @@ The CLI runs a background daemon that handles agent communication:
 
 Use council sessions when multiple teammates should debate and converge on one final plan.
 
+Council is useful when:
+- multiple valid implementations exist and you want tradeoff analysis
+- you want a reviewer/critic teammate to challenge a proposed approach
+- you need one final recommendation synthesized from several specialist agents
+
+Council behavior:
+- runs a structured multi-turn discussion across selected participants
+- tracks the shared deliberation session in task history
+- provides one final, consolidated output you can read or watch
+
+```mermaid
+flowchart LR
+  P[Prompt] --> S[Start council session]
+  S --> D[Deliberation rounds]
+  D --> V[Council vote / convergence]
+  V --> F[Final decision]
+  F --> R[council read / council --watch]
+```
+
 ```bash
 # Start a council session
 letta-teams agent-council --prompt "Choose rollout strategy for auth migration"
@@ -145,6 +155,20 @@ Every message creates a **task** with:
 - Status: pending → running → done/error
 - Results and tool call history
 
+### Interactive TUI Dashboard
+
+Launch the interactive terminal UI for a rich monitoring experience:
+
+```bash
+letta-teams --tui
+```
+
+The TUI provides:
+- **4 tabs**: Agents, Tasks, Activity, Details
+- **Real-time updates**: Polls every 3 seconds
+- **Keyboard navigation**: `1-4` for tabs, `Tab` to switch focus, arrows to navigate, `r` to refresh, `q` to quit
+- **Detailed views**: See agent status, task progress, and activity history
+
 ## Key Commands
 
 | Command | Purpose |
@@ -161,20 +185,6 @@ Every message creates a **task** with:
 | `update-progress <name> ...` | Self-report progress (used by teammates) |
 
 All messaging commands support `--wait` to block until completion.
-
-### Interactive TUI Dashboard
-
-Launch the interactive terminal UI for a rich monitoring experience:
-
-```bash
-letta-teams --tui
-```
-
-The TUI provides:
-- **4 tabs**: Agents, Tasks, Activity, Details
-- **Real-time updates**: Polls every 3 seconds
-- **Keyboard navigation**: `1-4` for tabs, `Tab` to switch focus, arrows to navigate, `r` to refresh, `q` to quit
-- **Detailed views**: See agent status, task progress, and activity history
 
 ## Example: Agent Orchestration
 
