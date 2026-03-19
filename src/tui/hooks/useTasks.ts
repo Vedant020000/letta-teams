@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { listTasks } from '../../store.js';
 import type { TaskState } from '../../types.js';
+import { filterVisibleTasks } from '../../task-visibility.js';
 
 /**
  * Hook to load and poll tasks
  */
-export function useTasks(pollIntervalMs: number = 3000): {
+export function useTasks(pollIntervalMs: number = 3000, includeInternal: boolean = false): {
   tasks: TaskState[];
   refresh: () => void;
 } {
@@ -14,11 +15,11 @@ export function useTasks(pollIntervalMs: number = 3000): {
   const loadTasks = useCallback(() => {
     try {
       const data = listTasks();
-      setTasks(data);
+      setTasks(filterVisibleTasks(data, includeInternal));
     } catch (error) {
       console.error('Failed to load tasks:', error);
     }
-  }, []);
+  }, [includeInternal]);
 
   // Initial load
   useEffect(() => {

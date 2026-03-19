@@ -175,6 +175,11 @@ export function parseMemfsStartup(value: string | undefined): MemfsStartup | und
 export type TaskStatus = "pending" | "running" | "done" | "error";
 
 /**
+ * Task kind for distinguishing user-facing work from internal lifecycle tasks
+ */
+export type TaskKind = "work" | "internal_init" | "internal_reinit";
+
+/**
  * A single tool call event
  */
 export interface ToolCallEvent {
@@ -186,6 +191,19 @@ export interface ToolCallEvent {
   success: boolean;
   /** Error message if failed */
   error?: string;
+}
+
+export interface TaskInitEvent {
+  /** ISO timestamp when the init event was recorded */
+  timestamp: string;
+  /** Init stream event type */
+  type: "assistant" | "tool_call" | "tool_result" | "result" | "error";
+  /** Optional tool name for tool_call events */
+  toolName?: string;
+  /** Content/snippet payload */
+  content?: string;
+  /** Whether tool_result event was an error */
+  isError?: boolean;
 }
 
 /**
@@ -204,6 +222,8 @@ export interface TaskState {
   conversationId?: string;
   /** Message/task sent to the teammate */
   message: string;
+  /** Task kind (may be absent on legacy tasks) */
+  kind?: TaskKind;
   /** Current status */
   status: TaskStatus;
   /** Result from the agent (when done) */
@@ -218,6 +238,8 @@ export interface TaskState {
   completedAt?: string;
   /** Tool calls made during execution */
   toolCalls?: ToolCallEvent[];
+  /** Durable init transcript events (for init tasks) */
+  initEvents?: TaskInitEvent[];
 }
 
 /**

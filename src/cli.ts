@@ -63,6 +63,7 @@ import {
 } from "./ipc.js";
 import { parseTargetName, validateTargetName } from './targets.js';
 import { displayDashboard } from "./dashboard.js";
+import { filterVisibleTasks } from './task-visibility.js';
 import { registerCommands } from "./commands/index.js";
 import { launchTui } from "./tui/index.js";
 import { checkAndAutoUpdate } from "./updater/auto-update.js";
@@ -90,7 +91,7 @@ program
 program.option("--json", "Output as JSON instead of human-readable format");
 
 // Global --tui flag for dashboard
-program.option("--tui", "Launch interactive TUI dashboard");
+program.option("--tui", "Launch interactive TUI dashboard (use --internal to include init/reinit tasks)");
 
 registerCommands(program);
 
@@ -1185,6 +1186,7 @@ program
   .option("--detail", "Show 2-line detail per item")
   .option("--verbose", "Show full task results instead of truncated")
   .option("--since <duration>", "Recent window: 30m, 6h, 2d, or minutes (default: 24h)", "24h")
+  .option("--internal", "Include internal init/reinit tasks")
   .option("--json", "Output as JSON")
   .action((options) => {
     const globalOpts = program.opts();
@@ -1206,6 +1208,7 @@ program
       verbose,
       json: jsonMode,
       sinceMinutes,
+      includeInternal: options.internal || false,
     });
   });
 
@@ -1216,12 +1219,13 @@ program
 program
   .command("tasks")
   .description("Show all active tasks (running/pending), including routed fork targets")
+  .option("--internal", "Include internal init/reinit tasks")
   .option("--json", "Output as JSON")
   .action((options) => {
     const globalOpts = program.opts();
     const jsonMode = globalOpts.json || options.json;
 
-    const allTasks = listTasks();
+    const allTasks = filterVisibleTasks(listTasks(), options.internal || false);
     const activeTasks = allTasks.filter(t => t.status === "pending" || t.status === "running");
 
     if (jsonMode) {
@@ -1283,6 +1287,7 @@ program
   .command("watch [target]")
   .description("Watch task updates continuously (all tasks, a specific task ID, or teammate/target)")
   .option("--interval <ms>", "Polling interval in milliseconds (default: 1000)", "1000")
+  .option("--internal", "Include internal init/reinit tasks in list mode")
   .option("--json", "Stream snapshots as JSON")
   .addHelpText('after', `
 
@@ -1386,7 +1391,7 @@ Examples:
           return;
         }
       } else {
-        const allTasks = listTasks();
+        const allTasks = filterVisibleTasks(listTasks(), options.internal || false);
         const filteredTasks = watchedTargetName
           ? allTasks.filter((task) => matchesWatchTarget(task, watchedTargetName!))
           : allTasks;
@@ -1745,7 +1750,7 @@ startStartupAutoUpdateCheck(checkAndAutoUpdate);
 
 // Check for --tui flag before parsing
 if (process.argv.includes('--tui')) {
-  launchTui();
+  launchTui({ includeInternal: process.argv.includes('--internal') });
 } else {
   program.parse();
 }

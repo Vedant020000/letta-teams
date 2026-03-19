@@ -5,9 +5,10 @@ type Tab = 'agents' | 'tasks' | 'activity' | 'details';
 
 interface FooterProps {
   activeTab: Tab;
+  includeInternal?: boolean;
 }
 
-const Footer: React.FC<FooterProps> = ({ activeTab }) => {
+const Footer: React.FC<FooterProps> = ({ activeTab, includeInternal = false }) => {
   // Show different navigation hint based on tab
   const navHint = activeTab === 'details' ? '←→ navigate' : '↑↓ navigate';
 
@@ -23,6 +24,8 @@ const Footer: React.FC<FooterProps> = ({ activeTab }) => {
           <Text dimColor>  </Text>
         </>
       )}
+      <Text dimColor>[i] internal: {includeInternal ? 'on' : 'off'}</Text>
+      <Text dimColor>  </Text>
       <Text dimColor>[r] refresh</Text>
       <Box flexGrow={1} />
       <Text dimColor>Ctrl+C exit</Text>

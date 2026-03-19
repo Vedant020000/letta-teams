@@ -6,6 +6,7 @@ import { formatRelativeTime, truncate } from '../utils/format.js';
 interface ActivityFeedProps {
   tasks: TaskState[];
   teammates: TeammateState[];
+  includeInternal?: boolean;
 }
 
 interface ActivityItem {
@@ -16,7 +17,7 @@ interface ActivityItem {
   status: 'success' | 'error' | 'info';
 }
 
-const ActivityFeed: React.FC<ActivityFeedProps> = ({ tasks, teammates }) => {
+const ActivityFeed: React.FC<ActivityFeedProps> = ({ tasks, teammates, includeInternal = false }) => {
   // Build activity items from tasks and teammates
   const activities: ActivityItem[] = [];
 
@@ -67,7 +68,10 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ tasks, teammates }) => {
   if (activities.length === 0) {
     return (
       <Box paddingX={1} paddingY={1} flexDirection="column">
-        <Text bold>ACTIVITY</Text>
+        <Text bold>
+        ACTIVITY
+        <Text dimColor>{includeInternal ? ' [internal: on]' : ' [internal: off]'}</Text>
+      </Text>
         <Box borderStyle="single" borderColor="gray" paddingX={1}>
           <Text dimColor>No recent activity</Text>
         </Box>
@@ -77,7 +81,10 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ tasks, teammates }) => {
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Text bold>ACTIVITY</Text>
+      <Text bold>
+        ACTIVITY
+        <Text dimColor>{includeInternal ? ' [internal: on]' : ' [internal: off]'}</Text>
+      </Text>
       <Box borderStyle="single" borderColor="gray" flexDirection="column">
         {activities.slice(0, 15).map((activity, index) => {
           const icon = activity.status === 'success' ? '✓' :

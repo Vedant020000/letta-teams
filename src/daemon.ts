@@ -33,6 +33,7 @@ import {
   updateConversationTarget,
   getRootConversationId,
   getMemoryTarget,
+  findStaleRunningInitTasks,
 } from "./store.js";
 import type { ConversationTargetState, DaemonMessage, DaemonResponse, TaskState, TeammateState } from "./types.js";
 import { buildInitPrompt, buildReinitPrompt, parseInitResult } from "./init.js";
@@ -149,6 +150,74 @@ function removeDaemonPid(): void {
  * In-memory tracking of running tasks (for quick status checks)
  */
 const runningTasks = new Map<string, { startedAt: string }>();
+const MAX_INIT_EVENTS = 200;
+
+function appendInitEvent(
+  taskId: string,
+  event: {
+    type: "assistant" | "tool_call" | "tool_result" | "result" | "error";
+    content?: string;
+    toolName?: string;
+    isError?: boolean;
+  },
+): void {
+  const task = getTask(taskId);
+  if (!task) return;
+
+  const nextEvents = [
+    ...(task.initEvents || []),
+    {
+      timestamp: new Date().toISOString(),
+      type: event.type,
+      toolName: event.toolName,
+      isError: event.isError,
+      content: event.content ? event.content.slice(0, 4000) : undefined,
+    },
+  ].slice(-MAX_INIT_EVENTS);
+
+  updateTask(taskId, { initEvents: nextEvents });
+}
+
+function getInFlightInitTaskId(teammateName: string): string | null {
+  const state = loadTeammate(teammateName);
+  if (!state?.initTaskId) {
+    return null;
+  }
+
+  const task = getTask(state.initTaskId);
+  if (!task) {
+    return null;
+  }
+
+  if (task.status === "pending" || task.status === "running") {
+    return task.id;
+  }
+
+  return null;
+}
+
+async function recoverStaleInitTasks(): Promise<void> {
+  const stale = findStaleRunningInitTasks(30);
+  if (stale.length === 0) {
+    return;
+  }
+
+  const recoveredAt = new Date().toISOString();
+  for (const { teammate, task } of stale) {
+    updateTask(task.id, {
+      status: "error",
+      error: "Recovered stale init task after daemon restart",
+      completedAt: recoveredAt,
+    });
+    updateTeammate(teammate.name, {
+      initStatus: "error",
+      initError: "Recovered stale init task after daemon restart",
+      initCompletedAt: recoveredAt,
+    });
+  }
+
+  console.warn(`Recovered ${stale.length} stale init task(s)`);
+}
 
 async function startBackgroundInit(
   teammate: TeammateState,
@@ -158,7 +227,13 @@ async function startBackgroundInit(
     syncReason: "scaffold teammate memory",
   },
 ): Promise<string> {
-  const task = createTask(teammate.name, options.message);
+  const inFlightTaskId = getInFlightInitTaskId(teammate.name);
+  if (inFlightTaskId) {
+    return inFlightTaskId;
+  }
+
+  const kind = options.message === '[internal reinit]' ? 'internal_reinit' : 'internal_init';
+  const task = createTask(teammate.name, options.message, { kind });
   updateTeammate(teammate.name, {
     initStatus: "pending",
     initTaskId: task.id,
@@ -185,6 +260,7 @@ async function processInitTask(taskId: string, teammateName: string, prompt: str
   const startedAt = new Date().toISOString();
   updateTask(taskId, { status: "running", startedAt });
   runningTasks.set(taskId, { startedAt });
+  appendInitEvent(taskId, { type: "assistant", content: "[init] task started" });
   updateTeammate(teammateName, {
     initStatus: "running",
     initStartedAt: startedAt,
@@ -205,10 +281,17 @@ async function processInitTask(taskId: string, teammateName: string, prompt: str
       throw new Error(`Teammate '${teammateName}' not found`);
     }
 
-    const initRun = await initializeTeammateMemory(teammateName, prompt);
+    const initRun = await initializeTeammateMemory(teammateName, prompt, {
+      onStreamEvent: (event) => appendInitEvent(taskId, event),
+    });
     const result = initRun.result;
     const parsed = parseInitResult(result);
     const completedAt = new Date().toISOString();
+
+    appendInitEvent(taskId, {
+      type: "result",
+      content: `[init] completed with status=${parsed.initStatus}`,
+    });
 
     updateTask(taskId, {
       status: parsed.initStatus === "done" ? "done" : "error",
@@ -260,6 +343,7 @@ async function processInitTask(taskId: string, teammateName: string, prompt: str
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const completedAt = new Date().toISOString();
+    appendInitEvent(taskId, { type: "error", content: errorMessage });
     updateTask(taskId, {
       status: "error",
       error: errorMessage,
@@ -301,6 +385,7 @@ async function handleMessage(msg: DaemonMessage): Promise<DaemonResponse> {
       const task = createTask(msg.targetName, msg.message, {
         rootTeammateName: parsed.rootName,
         targetName: msg.targetName,
+        kind: 'work',
       });
 
       // Start processing in background (don't await)
@@ -575,6 +660,10 @@ export async function startDaemon(port: number = DEFAULT_PORT): Promise<void> {
   // Save PID and port
   saveDaemonPid();
   saveDaemonPort(port);
+
+  // Establish default project dir and recover stale init runs for this project.
+  setProjectDir(process.cwd());
+  await recoverStaleInitTasks();
 
   const server = createServer();
 

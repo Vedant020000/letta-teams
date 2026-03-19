@@ -10,6 +10,7 @@ import type {
   ConversationTargetState,
   TeammateState,
   TeammateStatus,
+  TaskKind,
   TaskState,
   TaskStatus,
   TodoItem,
@@ -746,6 +747,39 @@ export function findStaleTeammates(maxSilentMinutes: number): TeammateState[] {
   });
 }
 
+export interface StaleRunningInitTask {
+  teammate: TeammateState;
+  task: TaskState;
+}
+
+/**
+ * Find stale init tasks where teammate init is still marked running but
+ * the init task has exceeded max age and remains pending/running.
+ */
+export function findStaleRunningInitTasks(maxAgeMinutes: number): StaleRunningInitTask[] {
+  const teammates = listTeammates();
+  const tasks = loadTasks();
+  const cutoffMs = Date.now() - maxAgeMinutes * 60 * 1000;
+
+  return teammates.flatMap((teammate) => {
+    if (teammate.initStatus !== 'running' || !teammate.initTaskId || !teammate.initStartedAt) {
+      return [];
+    }
+
+    const startedAtMs = new Date(teammate.initStartedAt).getTime();
+    if (Number.isNaN(startedAtMs) || startedAtMs >= cutoffMs) {
+      return [];
+    }
+
+    const task = tasks[teammate.initTaskId];
+    if (!task || (task.status !== 'pending' && task.status !== 'running')) {
+      return [];
+    }
+
+    return [{ teammate, task }];
+  });
+}
+
 // ═══════════════════════════════════════════════════════════════
 // DAEMON TASK STORAGE
 // ═══════════════════════════════════════════════════════════════
@@ -795,7 +829,7 @@ export function getTask(taskId: string): TaskState | null {
 export function createTask(
   teammateName: string,
   message: string,
-  metadata?: Pick<TaskState, 'rootTeammateName' | 'targetName' | 'conversationId'>,
+  metadata?: Pick<TaskState, 'rootTeammateName' | 'targetName' | 'conversationId'> & { kind?: TaskKind },
 ): TaskState {
   const tasks = loadTasks();
   const taskId = generateTaskId();
@@ -807,6 +841,7 @@ export function createTask(
     targetName: metadata?.targetName,
     conversationId: metadata?.conversationId,
     message,
+    kind: metadata?.kind,
     status: "pending",
     createdAt: new Date().toISOString(),
   };
@@ -822,7 +857,7 @@ export function createTask(
  */
 export function updateTask(
   taskId: string,
-  updates: Partial<Pick<TaskState, "status" | "result" | "error" | "startedAt" | "completedAt" | "toolCalls" | "conversationId" | "targetName" | "rootTeammateName">>
+  updates: Partial<Pick<TaskState, "status" | "result" | "error" | "startedAt" | "completedAt" | "toolCalls" | "conversationId" | "targetName" | "rootTeammateName" | "initEvents" | "kind">>
 ): TaskState | null {
   const tasks = loadTasks();
   const task = tasks[taskId];

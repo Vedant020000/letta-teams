@@ -769,6 +769,25 @@ export interface MessageOptions {
   onEvent?: MessageEventCallback;
 }
 
+export interface InitStreamEvent {
+  type: "assistant" | "tool_call" | "tool_result" | "result" | "error";
+  content?: string;
+  toolName?: string;
+  isError?: boolean;
+}
+
+export interface InitMessageOptions extends MessageOptions {
+  /** Hard wall-clock timeout for init execution */
+  maxDurationMs?: number;
+  /** Max idle time (no stream events) before failing */
+  maxIdleMs?: number;
+  /** Callback for low-level init stream events (for logging/telemetry) */
+  onStreamEvent?: (event: InitStreamEvent) => void;
+}
+
+const DEFAULT_INIT_MAX_DURATION_MS = 10 * 60 * 1000;
+const DEFAULT_INIT_MAX_IDLE_MS = 90 * 1000;
+
 /**
  * Run a dedicated initialization conversation for a teammate.
  * This keeps memory bootstrap separate from the main working conversation.
@@ -776,9 +795,14 @@ export interface MessageOptions {
 export async function initializeTeammateMemory(
   name: string,
   message: string,
-  options: MessageOptions = {}
+  options: InitMessageOptions = {}
 ): Promise<{ result: string; conversationId?: string }> {
-  const { onEvent } = options;
+  const {
+    onEvent,
+    onStreamEvent,
+    maxDurationMs = DEFAULT_INIT_MAX_DURATION_MS,
+    maxIdleMs = DEFAULT_INIT_MAX_IDLE_MS,
+  } = options;
   const state = loadTeammate(name);
 
   if (!state) {
@@ -790,6 +814,8 @@ export async function initializeTeammateMemory(
   return withTeammateLock(name, async () => {
     const agentId = state.agentId;
     updateStatus(name, "working");
+    let watchdogTimer: NodeJS.Timeout | undefined;
+    let failed = false;
 
     try {
       await using session = createSession(agentId, {
@@ -797,44 +823,109 @@ export async function initializeTeammateMemory(
         disallowedTools: ["AskUserQuestion", "EnterPlanMode", "ExitPlanMode"],
       });
 
+      const failInit = (message: string): void => {
+        if (failed) return;
+        failed = true;
+        if (typeof session.abort === "function") {
+          void session.abort().catch(() => undefined);
+        }
+        throw new Error(message);
+      };
+
       await withRetry(() => session.send(message), { maxAttempts: 2, baseDelayMs: 1000 });
 
       let accumulatedText = "";
 
-      for await (const msg of session.stream()) {
-        if (msg.type === "assistant" && "content" in msg && typeof msg.content === "string") {
-          accumulatedText += msg.content;
-        }
+      const startedAtMs = Date.now();
+      let lastEventAtMs = startedAtMs;
 
-        if (onEvent) {
-          if (msg.type === "tool_call") {
-            onEvent({ type: "tool_call", name: msg.toolName, input: msg.toolInput });
+      const watchdogPromise = new Promise<never>((_, reject) => {
+        watchdogTimer = setInterval(() => {
+          const now = Date.now();
+          const elapsedMs = now - startedAtMs;
+          const idleMs = now - lastEventAtMs;
+
+          if (elapsedMs > maxDurationMs) {
+            try {
+              failInit(`Initialization timed out after ${maxDurationMs}ms`);
+            } catch (error) {
+              reject(error);
+            }
+            return;
           }
+
+          if (idleMs > maxIdleMs) {
+            try {
+              failInit(`Initialization stalled (no events for ${maxIdleMs}ms)`);
+            } catch (error) {
+              reject(error);
+            }
+          }
+        }, 500);
+      });
+
+      const streamPromise = (async () => {
+        for await (const msg of session.stream()) {
+          lastEventAtMs = Date.now();
+
+          if (msg.type === "assistant" && "content" in msg && typeof msg.content === "string") {
+            accumulatedText += msg.content;
+            onStreamEvent?.({ type: "assistant", content: msg.content });
+          }
+
+          if (msg.type === "tool_call") {
+            onEvent?.({ type: "tool_call", name: msg.toolName, input: msg.toolInput });
+            onStreamEvent?.({
+              type: "tool_call",
+              toolName: msg.toolName,
+              content: JSON.stringify(msg.toolInput),
+            });
+          }
+
           if (msg.type === "tool_result") {
             const snippet = msg.content.length > 80
               ? msg.content.slice(0, 80) + "..."
               : msg.content;
-            onEvent({ type: "tool_result", isError: msg.isError, snippet });
+            onEvent?.({ type: "tool_result", isError: msg.isError, snippet });
+            onStreamEvent?.({
+              type: "tool_result",
+              isError: msg.isError,
+              content: msg.content,
+            });
+          }
+
+          if (msg.type === "error") {
+            onStreamEvent?.({ type: "error", content: msg.message });
+            throw new Error(msg.message);
+          }
+
+          if (msg.type === "result") {
+            onStreamEvent?.({ type: "result", content: msg.result || accumulatedText || "" });
+            return {
+              result: msg.result || accumulatedText || "",
+              conversationId: session.conversationId ?? undefined,
+            };
           }
         }
 
-        if (msg.type === "result") {
-          updateStatus(name, "done");
-          return {
-            result: msg.result || accumulatedText || "",
-            conversationId: session.conversationId ?? undefined,
-          };
-        }
-      }
+        return {
+          result: accumulatedText,
+          conversationId: session.conversationId ?? undefined,
+        };
+      })();
+
+      const initResult = await Promise.race([streamPromise, watchdogPromise]);
 
       updateStatus(name, "done");
-      return {
-        result: accumulatedText,
-        conversationId: undefined,
-      };
+      return initResult;
     } catch (error) {
       updateStatus(name, "error");
       throw error;
+    } finally {
+      // Always clear watchdog timer when init exits (success or error)
+      if (watchdogTimer) {
+        clearInterval(watchdogTimer);
+      }
     }
   });
 }

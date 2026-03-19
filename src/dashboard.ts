@@ -4,6 +4,7 @@
 
 import { listTeammates, loadTasks } from "./store.js";
 import type { TeammateState, TaskState } from "./types.js";
+import { filterVisibleTasks } from './task-visibility.js';
 
 /** Default number of recent items to show */
 const DEFAULT_LIMIT = 10;
@@ -108,13 +109,14 @@ export interface DashboardRenderOptions {
 export interface DashboardQueryOptions {
   limit?: number;
   sinceMinutes?: number;
+  includeInternal?: boolean;
 }
 
 /**
  * Get dashboard data by combining teammates and tasks
  */
 export function getDashboardData(options: DashboardQueryOptions = {}): DashboardData {
-  const { limit = DEFAULT_LIMIT, sinceMinutes = 24 * 60 } = options;
+  const { limit = DEFAULT_LIMIT, sinceMinutes = 24 * 60, includeInternal = false } = options;
   let teammates: TeammateState[];
   let tasks: TaskState[];
   
@@ -141,10 +143,12 @@ export function getDashboardData(options: DashboardQueryOptions = {}): Dashboard
       problem: t.statusSummary?.phase === 'blocked' ? t.statusSummary.message : undefined,
     }));
 
+  const visibleTasks = filterVisibleTasks(tasks, includeInternal);
+
   // RECENT: Completed or error tasks, sorted by completion time
   const cutoffMs = Date.now() - (sinceMinutes * 60 * 1000);
 
-  const recent = tasks
+  const recent = visibleTasks
     .filter(t => t.status === "done" || t.status === "error")
     .filter(t => t.completedAt) // Must have completion time
     .filter((t) => {
@@ -307,7 +311,14 @@ export function renderDashboard(data: DashboardData, options: DashboardRenderOpt
  * Display dashboard once and exit
  */
 export function displayDashboard(
-  options: { limit?: number; detail?: boolean; verbose?: boolean; json?: boolean; sinceMinutes?: number } = {},
+  options: {
+    limit?: number;
+    detail?: boolean;
+    verbose?: boolean;
+    json?: boolean;
+    sinceMinutes?: number;
+    includeInternal?: boolean;
+  } = {},
 ): void {
   const {
     limit = DEFAULT_LIMIT,
@@ -315,8 +326,9 @@ export function displayDashboard(
     verbose = false,
     json = false,
     sinceMinutes = 24 * 60,
+    includeInternal = false,
   } = options;
-  const data = getDashboardData({ limit, sinceMinutes });
+  const data = getDashboardData({ limit, sinceMinutes, includeInternal });
 
   if (json) {
     console.log(JSON.stringify(data, null, 2));

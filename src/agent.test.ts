@@ -25,6 +25,7 @@ vi.mock("@letta-ai/letta-code-sdk", () => ({
     agentId,
     conversationId: `conv-${agentId}`,
     send: vi.fn().mockResolvedValue(undefined),
+    abort: vi.fn().mockResolvedValue(undefined),
     stream: vi.fn().mockImplementation(async function* () {
       yield { type: "result", result: "Task completed successfully!" };
     }),
@@ -286,6 +287,32 @@ describe("Agent Module", () => {
 
       expect(result.result).toBe("Task completed successfully!");
       expect(result.conversationId).toBe("conv-agent-123");
+    });
+
+    it("should fail stalled init and abort session", async () => {
+      const { createSession } = await import("@letta-ai/letta-code-sdk");
+      const abort = vi.fn().mockResolvedValue(undefined);
+
+      vi.mocked(createSession).mockImplementationOnce(() => ({
+        agentId: "agent-123",
+        conversationId: "conv-agent-123",
+        send: vi.fn().mockResolvedValue(undefined),
+        abort,
+        stream: vi.fn().mockImplementation(async function* () {
+          await new Promise(() => undefined);
+          yield { type: "assistant", content: "never" };
+        }),
+        [Symbol.asyncDispose]: vi.fn().mockResolvedValue(undefined),
+      } as never));
+
+      await expect(
+        initializeTeammateMemory("alice", "Initialize memory", {
+          maxDurationMs: 5_000,
+          maxIdleMs: 10,
+        }),
+      ).rejects.toThrow("Initialization stalled");
+
+      expect(abort).toHaveBeenCalled();
     });
   });
 

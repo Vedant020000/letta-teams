@@ -11,9 +11,10 @@ import {
 interface TaskListProps {
   tasks: TaskState[];
   selectedIndex: number;
+  includeInternal?: boolean;
 }
 
-const TaskList: React.FC<TaskListProps> = ({ tasks, selectedIndex }) => {
+const TaskList: React.FC<TaskListProps> = ({ tasks, selectedIndex, includeInternal = false }) => {
   if (tasks.length === 0) {
     return (
       <Box paddingX={1} paddingY={1}>
@@ -24,7 +25,10 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, selectedIndex }) => {
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Text bold>TASKS ({tasks.length})</Text>
+      <Text bold>
+        TASKS ({tasks.length})
+        <Text dimColor>{includeInternal ? ' [internal: on]' : ' [internal: off]'}</Text>
+      </Text>
       <Box borderStyle="single" borderColor="gray" flexDirection="column">
         {tasks.slice(0, 10).map((task, index) => {
           const isSelected = index === selectedIndex;

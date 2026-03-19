@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Text, useApp, useInput, useStdout } from 'ink';
+import { Box, useApp, useInput, useStdout } from 'ink';
 import Header from './components/Header.js';
 import Tabs from './components/Tabs.js';
 import Footer from './components/Footer.js';
@@ -15,7 +15,11 @@ import type { TeammateState, TaskState } from '../types.js';
 
 type Tab = 'agents' | 'tasks' | 'activity' | 'details';
 
-const App: React.FC = () => {
+interface AppProps {
+  includeInternal?: boolean;
+}
+
+const App: React.FC<AppProps> = ({ includeInternal = false }) => {
   const { exit } = useApp();
   const { stdout } = useStdout();
 
@@ -23,10 +27,11 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('agents');
   const [selectedAgentIndex, setSelectedAgentIndex] = useState(0);
   const [selectedTaskIndex, setSelectedTaskIndex] = useState(0);
+  const [showInternal, setShowInternal] = useState(includeInternal);
 
   // Data hooks (with polling)
   const { teammates, refresh: refreshTeammates } = useTeammates(3000);
-  const { tasks, refresh: refreshTasks } = useTasks(3000);
+  const { tasks, refresh: refreshTasks } = useTasks(3000, showInternal);
 
   // Derived data
   const selectedAgent = teammates[selectedAgentIndex] || null;
@@ -90,6 +95,10 @@ const App: React.FC = () => {
       refreshAll();
     }
 
+    if (input === 'i') {
+      setShowInternal(prev => !prev);
+    }
+
     // Quit
     if (input === 'q' || (key.ctrl && input === 'c')) {
       exit();
@@ -137,13 +146,14 @@ const App: React.FC = () => {
             <TaskList
               tasks={sortedTasks}
               selectedIndex={selectedTaskIndex}
+              includeInternal={showInternal}
             />
             <TaskDetail task={selectedTask} />
           </>
         )}
 
         {activeTab === 'activity' && (
-          <ActivityFeed tasks={sortedTasks} teammates={teammates} />
+          <ActivityFeed tasks={sortedTasks} teammates={teammates} includeInternal={showInternal} />
         )}
 
         {activeTab === 'details' && (
@@ -155,7 +165,7 @@ const App: React.FC = () => {
       </Box>
 
       {/* Footer */}
-      <Footer activeTab={activeTab} />
+      <Footer activeTab={activeTab} includeInternal={showInternal} />
     </Box>
   );
 };

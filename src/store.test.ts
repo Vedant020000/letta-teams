@@ -29,6 +29,7 @@ import {
   cleanupOldTasks,
   findIdleTeammates,
   findBrokenTeammates,
+  findStaleRunningInitTasks,
   deleteTeammates,
   setProjectDir,
   getProjectDir,
@@ -301,6 +302,14 @@ describe("Store Module", () => {
       expect(task.createdAt).toBeDefined();
     });
 
+    it("should persist task kind metadata", () => {
+      const task = createTask("test-agent", "[internal init] setup", { kind: "internal_init" });
+      const loaded = getTask(task.id);
+
+      expect(task.kind).toBe("internal_init");
+      expect(loaded?.kind).toBe("internal_init");
+    });
+
     it("should get a task by ID", () => {
       const created = createTask("test-agent", "Task");
       const loaded = getTask(created.id);
@@ -401,6 +410,30 @@ describe("Store Module", () => {
       const cleaned = cleanupOldTasks(7);
       expect(cleaned).toBe(1);
       expect(getTask(oldTask.id)).toBeNull();
+    });
+
+    it("should find stale running init tasks", () => {
+      const oldStart = new Date(Date.now() - 45 * 60 * 1000).toISOString();
+      saveTeammate({
+        name: "init-agent",
+        role: "Initializer",
+        agentId: "agent-init",
+        status: "idle",
+        initStatus: "running",
+        initTaskId: "",
+        initStartedAt: oldStart,
+        createdAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString(),
+      });
+
+      const task = createTask("init-agent", "[internal init]");
+      updateTask(task.id, { status: "running", startedAt: oldStart });
+      updateTeammate("init-agent", { initTaskId: task.id });
+
+      const stale = findStaleRunningInitTasks(30);
+      expect(stale).toHaveLength(1);
+      expect(stale[0]?.teammate.name).toBe("init-agent");
+      expect(stale[0]?.task.id).toBe(task.id);
     });
   });
 
