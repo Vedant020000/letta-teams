@@ -5,6 +5,16 @@ description: Orchestrate teams of stateful Letta agents. Spawn teammates, broadc
 # letta-teams: Multi-Agent Orchestration
 `letta-teams` is a CLI for orchestrating teams of stateful Letta agents. It enables you to spawn multiple specialized agents, create conversation forks on them, message them individually or in parallel, and monitor their progress through a dashboard.
 
+## Required First Step
+Before running messaging/orchestration commands, start the daemon:
+
+```bash
+letta-teams daemon --start
+letta-teams daemon --status
+```
+
+If it is already running, `--status` will confirm.
+
 ## Quick Reference
 ```bash
 # Authentication
@@ -23,9 +33,17 @@ letta-teams spawn <name> <role> --model <model>  # Use specific model
 letta-teams spawn <name> <role> --spawn-prompt <text>  # Specialize background init
 letta-teams spawn <name> <role> --skip-init  # Skip memory init
 letta-teams spawn <name> <role> --no-memfs   # Disable memfs
+letta-teams spawn <name> <role> --memfs-startup <mode> # blocking|background|skip
 letta-teams spawn <name> <role> --force # Overwrite existing
 letta-teams reinit <name>                # Re-run background init
 letta-teams reinit <name> --wait         # Wait for init to finish
+
+# Agent council
+letta-teams agent-council --prompt "..."            # Start council session
+letta-teams agent-council --prompt "..." --participants "A,B"
+letta-teams agent-council --prompt "..." --max-turns 7
+letta-teams council read [sessionId]                 # Read final decision
+letta-teams council --watch [sessionId]              # Wait for final decision
 
 # Conversation forks / targets
 letta-teams fork <name> <forkName>       # Create a new conversation fork
@@ -95,6 +113,11 @@ Additional targets can exist on the same teammate:
 
 Use fork targets when you want separate conversation threads without spawning a whole new teammate.
 
+Routing behavior:
+- `letta-teams message backend ...` routes to the root target conversation.
+- `letta-teams message backend/review ...` routes to that fork conversation.
+- Background initialization and `reinit` use a dedicated memory/init target conversation.
+
 ### Stateful Memory
 Teammates remember conversations. Each teammate has:
 - **Core memory** - Always in context (persona, human, project blocks)
@@ -103,6 +126,7 @@ Teammates remember conversations. Each teammate has:
 
 ### Background Daemon
 Letta Teams uses a background daemon process for handling agent communications:
+- Start it first: `letta-teams daemon --start`
 - Starts automatically when needed
 - Enables fire-and-forget messaging
 - Handles parallel execution of tasks
@@ -145,12 +169,51 @@ letta-teams spawn architect "System architect" --skip-init
 # Disable memfs
 letta-teams spawn architect "System architect" --no-memfs
 
+# Control memfs startup behavior
+letta-teams spawn architect "System architect" --memfs-startup blocking
+letta-teams spawn architect "System architect" --memfs-startup background
+letta-teams spawn architect "System architect" --memfs-startup skip
+
 # Re-run initialization later
 letta-teams reinit architect --prompt "Refresh memory around current backend architecture"
 
 # Overwrite existing teammate
 letta-teams spawn dev "Developer" --force
 ```
+
+### Init + Memfs Behavior
+- Spawn defaults to background memory initialization unless `--skip-init` is set.
+- `--spawn-prompt` specializes the initialization pass.
+- Init/reinit run in a dedicated memory/init conversation target.
+- Memfs is enabled by default; disable with `--no-memfs`.
+- Memfs startup modes:
+  - `blocking`: wait for memfs to be ready before continuing.
+  - `background`: initialize memfs asynchronously.
+  - `skip`: do not run memfs startup.
+
+## Agent Council
+
+Use council when you want multiple teammates to deliberate and produce one final decision.
+
+```bash
+# Start council
+letta-teams agent-council --prompt "Choose the safest rollout plan for auth migration"
+
+# Restrict participants
+letta-teams agent-council --prompt "Pick database index strategy" --participants "backend,reviewer"
+
+# Limit turns and add custom behavior prompt
+letta-teams agent-council --prompt "Resolve API versioning direction" --message "Prefer backward compatibility" --max-turns 6
+
+# Read/watch final plan
+letta-teams council read
+letta-teams council --watch
+```
+
+Recommended flow:
+1. Start daemon (`letta-teams daemon --start`)
+2. Start council (`agent-council --prompt ...`)
+3. Read final output (`council read`) or follow live (`council --watch`)
 
 ### Role Guidelines
 Good roles are specific and actionable:

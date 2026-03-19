@@ -55,6 +55,15 @@ npm install -g letta-teams
 
 Agents can then invoke `letta-teams` commands via the Bash tool.
 
+## Required First Step
+
+Before running orchestration commands, start the daemon:
+
+```bash
+letta-teams daemon --start
+letta-teams daemon --status
+```
+
 ## Skill Integration
 
 Load the skill file to give any Letta Code agent the ability to orchestrate teams:
@@ -90,12 +99,34 @@ Teammates can also have additional targets:
 
 This lets you keep multiple threads of work isolated while still sharing the same underlying teammate identity.
 
+Routing behavior:
+- `message backend ...` routes to backend root conversation
+- `message backend/review ...` routes to fork conversation
+- spawn init/reinit route through dedicated init/memory target conversation
+
 ### Background Daemon
 
 The CLI runs a background daemon that handles agent communication:
+- Start explicitly with `letta-teams daemon --start`
 - Enables fire-and-forget messaging (dispatch tasks without blocking)
 - Manages parallel execution across multiple teammates
 - Tracks task state and results
+
+### Agent Council
+
+Use council sessions when multiple teammates should debate and converge on one final plan.
+
+```bash
+# Start a council session
+letta-teams agent-council --prompt "Choose rollout strategy for auth migration"
+
+# Limit participants and turns
+letta-teams agent-council --prompt "Pick DB indexing strategy" --participants "backend,reviewer" --max-turns 6
+
+# Read or watch final decision
+letta-teams council read
+letta-teams council --watch
+```
 
 ### Task System
 
@@ -210,9 +241,21 @@ letta-teams spawn backend "Backend engineer" --skip-init
 # Disable memfs
 letta-teams spawn backend "Backend engineer" --no-memfs
 
+# Control memfs startup mode
+letta-teams spawn backend "Backend engineer" --memfs-startup blocking
+letta-teams spawn backend "Backend engineer" --memfs-startup background
+letta-teams spawn backend "Backend engineer" --memfs-startup skip
+
 # Re-run non-destructive initialization later
 letta-teams reinit backend --prompt "Refresh the teammate's memory around the current auth architecture"
 ```
+
+Behavior summary:
+- Init runs by default in a dedicated background init/memory conversation target.
+- `--spawn-prompt` provides specialization instructions for that init run.
+- `--skip-init` disables initialization.
+- Memfs is enabled by default unless `--no-memfs` is set.
+- `--memfs-startup` controls startup strategy (`blocking`, `background`, `skip`).
 
 ## Support the Project
 
