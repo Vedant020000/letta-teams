@@ -406,7 +406,7 @@ export function updateTeammateInitScaffold(state: TeammateState): void {
   if (!state.memfsEnabled) return;
   ensureMemoryFilesystemDirs(state.agentId);
 
-  const memoryConversationId = getMemoryConversationId(state.name);
+  const initConversationId = state.initConversationId || getMemoryConversationId(state.name);
 
   writeMemoryFile(
     state.agentId,
@@ -416,9 +416,10 @@ export function updateTeammateInitScaffold(state: TeammateState): void {
 ## Initialization
 - Status: ${state.initStatus || "pending"}
 - Init task ID: ${state.initTaskId || "pending"}
-- Init conversation ID: ${memoryConversationId || "none"}
+- Init conversation ID: ${initConversationId || "none"}
 - Init started at: ${state.initStartedAt || "not started"}
 - Init completed at: ${state.initCompletedAt || "not completed"}
+- Selected specialization ID: ${state.selectedSpecId || "none"}
 - Selected specialization: ${state.selectedSpecTitle || "none"}
 - Init error: ${state.initError || "none"}
 `,

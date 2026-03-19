@@ -94,6 +94,7 @@ Work autonomously.
 At the end, reply with exactly these fields:
 
 INIT_STATUS: done
+SPEC_ID: <short stable spec id or custom>
 SPECIALIZATION: <short title>
 SUMMARY: <1-3 sentence summary of the durable memory you initialized>`;
 }
@@ -135,24 +136,28 @@ This is an update pass, not a reset. Preserve useful durable knowledge, refine o
 At the end, reply with exactly these fields:
 
 INIT_STATUS: done
+SPEC_ID: <short stable spec id or custom>
 SPECIALIZATION: <short title>
 SUMMARY: <1-3 sentence summary of the durable memory you updated>`;
 }
 
 export interface ParsedInitResult {
   initStatus: "done" | "error";
+  selectedSpecId?: string;
   selectedSpecTitle?: string;
   summary?: string;
 }
 
 export function parseInitResult(result: string): ParsedInitResult {
   const statusMatch = result.match(/^INIT_STATUS:\s*(.+)$/mi);
+  const specIdMatch = result.match(/^SPEC_ID:\s*(.+)$/mi);
   const specializationMatch = result.match(/^SPECIALIZATION:\s*(.+)$/mi);
   const summaryMatch = result.match(/^SUMMARY:\s*(.+)$/mi);
 
   const status = statusMatch?.[1]?.trim().toLowerCase();
   return {
     initStatus: status === "done" ? "done" : "error",
+    selectedSpecId: specIdMatch?.[1]?.trim(),
     selectedSpecTitle: specializationMatch?.[1]?.trim(),
     summary: summaryMatch?.[1]?.trim(),
   };

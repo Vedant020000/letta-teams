@@ -239,7 +239,9 @@ async function startBackgroundInit(
   updateTeammate(teammate.name, {
     initStatus: "pending",
     initTaskId: task.id,
+    initConversationId: undefined,
     initError: undefined,
+    selectedSpecId: undefined,
     selectedSpecTitle: undefined,
     initStartedAt: undefined,
     initCompletedAt: undefined,
@@ -304,7 +306,9 @@ async function processInitTask(taskId: string, teammateName: string, prompt: str
     // Update init status fields
     updateTeammate(teammateName, {
       initStatus: parsed.initStatus,
+      selectedSpecId: parsed.selectedSpecId,
       selectedSpecTitle: parsed.selectedSpecTitle,
+      initConversationId: initRun.conversationId,
       initCompletedAt: completedAt,
       initError: parsed.initStatus === "done" ? undefined : result,
     });

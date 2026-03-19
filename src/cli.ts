@@ -69,6 +69,7 @@ import { registerCommands } from "./commands/index.js";
 import { launchTui } from "./tui/index.js";
 import { checkAndAutoUpdate } from "./updater/auto-update.js";
 import { startStartupAutoUpdateCheck } from "./updater/startup-auto-update.js";
+import { parseMemfsStartup } from "./types.js";
 import type { TaskState, TodoState, TodoPriority, StatusPhase } from "./types.js";
 
 // Get version from package.json
@@ -239,6 +240,7 @@ program
   .description("Create a teammate with a root conversation target and optional background memory init")
   .option("--model <model>", "Model to use (e.g. claude-sonnet-4-20250514, zai/glm-5)")
   .option("--spawn-prompt <text>", "Extra specialization prompt passed to background memory initialization")
+  .option("--memfs-startup <mode>", "Memfs startup mode: blocking|background|skip")
   .option("--skip-init", "Skip background memory initialization entirely")
   .option("--no-memfs", "Disable memfs for this teammate")
   .option("--force", "Overwrite existing teammate with the same name")
@@ -264,6 +266,8 @@ Examples:
         return;
       }
 
+      const memfsStartup = parseMemfsStartup(options.memfsStartup);
+
       const spinner = globalOpts.json ? null : ora(`Spawning teammate '${name}'...`).start();
 
       // Ensure daemon is running (spawn uses createSession internally)
@@ -275,6 +279,7 @@ Examples:
         spawnPrompt: options.spawnPrompt,
         skipInit: options.skipInit,
         memfsEnabled: !options.noMemfs,
+        memfsStartup,
       });
 
       if (globalOpts.json) {

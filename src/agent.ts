@@ -695,6 +695,8 @@ export async function spawnTeammate(
       await using session = createSession(agentId, {
         permissionMode: "bypassPermissions",
         disallowedTools: ["AskUserQuestion", "EnterPlanMode", "ExitPlanMode"],
+        memfs: memfsEnabled,
+        memfsStartup: options.memfsStartup,
       });
 
       await session.send("You are online. Await instructions.");
@@ -824,6 +826,8 @@ export async function initializeTeammateMemory(
       await using session = createSession(agentId, {
         permissionMode: "bypassPermissions",
         disallowedTools: ["AskUserQuestion", "EnterPlanMode", "ExitPlanMode"],
+        memfs: state.memfsEnabled,
+        memfsStartup: state.memfsStartup,
       });
 
       const failInit = (message: string): void => {

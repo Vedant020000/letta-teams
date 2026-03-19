@@ -76,8 +76,12 @@ export interface TeammateState {
   initStatus?: InitStatus;
   /** Background init task ID */
   initTaskId?: string;
+  /** Dedicated conversation ID used for init/reinit */
+  initConversationId?: string;
   /** Error captured during initialization */
   initError?: string;
+  /** Selected specialization spec ID from init */
+  selectedSpecId?: string;
   /** Selected specialization summary from init */
   selectedSpecTitle?: string;
   /** ISO timestamp when init started */
