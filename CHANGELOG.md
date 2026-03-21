@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/Vedant020000/letta-teams/compare/v0.8.0...v0.8.1) (2026-03-21)
+
+
+### Bug Fixes
+
+* **messaging:** drop duplicate broadcast review options ([e21c1f8](https://github.com/Vedant020000/letta-teams/commit/e21c1f8ab255336aa030d30289d48a0356982d3d))
+
 # [0.8.0](https://github.com/Vedant020000/letta-teams/compare/v0.7.0...v0.8.0) (2026-03-21)
 
 
