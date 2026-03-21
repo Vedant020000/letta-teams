@@ -1,6 +1,6 @@
 {
   "name": "letta-teams",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "CLI for orchestrating teams of stateful Letta agents working in parallel",
   "type": "module",
   "main": "./dist/cli.js",

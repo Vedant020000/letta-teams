@@ -1,5 +1,13 @@
 # Changelog
 
+# [0.8.0](https://github.com/Vedant020000/letta-teams/compare/v0.7.0...v0.8.0) (2026-03-21)
+
+
+### Features
+
+* **dispatch:** add review gate pipeline ([b323867](https://github.com/Vedant020000/letta-teams/commit/b323867c29390991b2885d271566b064cef587d1))
+* **skills:** add built-in fallback and context window option ([35a64c0](https://github.com/Vedant020000/letta-teams/commit/35a64c0324f6778eeb49f830675dea247e01967a))
+
 # [0.7.0](https://github.com/Vedant020000/letta-teams/compare/v0.6.0...v0.7.0) (2026-03-19)
 
 
