@@ -63,7 +63,7 @@ Examples:
           contextWindowLimit,
           spawnPrompt: options.spawnPrompt,
           skipInit: options.skipInit,
-          memfsEnabled: !options.noMemfs,
+          memfsEnabled: options.memfs !== false,
           memfsStartup,
         });
 

@@ -116,7 +116,7 @@ export async function runDisposableCouncilReviewer(input: {
   let reviewerAgentId: string | undefined;
   try {
     reviewerAgentId = await createAgent({
-      model: 'letta/auto',
+      model: process.env.LETTA_MODEL || 'letta/auto',
       tags: ['origin:letta-teams', 'kind:council-reviewer', `session:${input.sessionId}`],
       memory: buildCouncilReviewerMemoryBlocks(),
       memfs: false,

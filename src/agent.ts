@@ -349,10 +349,13 @@ function isLettaCloud(): boolean {
 
 /**
  * Get the default model to use.
- * - Letta Cloud: use "auto" for intelligent model routing
- * - Self-hosted: let CLI/server decide (undefined)
+ * Priority: LETTA_MODEL env var > Letta Cloud "auto" > undefined (server decides)
+ *
+ * Self-hosted users can set LETTA_MODEL to specify their preferred model
+ * (e.g. "anthropic/claude-sonnet-4-20250514") instead of relying on server defaults.
  */
 function getDefaultModel(): string | undefined {
+  if (process.env.LETTA_MODEL) return process.env.LETTA_MODEL;
   return isLettaCloud() ? "auto" : undefined;
 }
 
