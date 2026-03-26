@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.9.0](https://github.com/Vedant020000/letta-teams/compare/v0.8.2...v0.9.0) (2026-03-26)
+
+
+### Features
+
+* **council:** add council status command ([647d754](https://github.com/Vedant020000/letta-teams/commit/647d754590b1247b1a282a97edddcfb4d95c5375))
+
 ## [0.8.2](https://github.com/Vedant020000/letta-teams/compare/v0.8.1...v0.8.2) (2026-03-25)
 
 
