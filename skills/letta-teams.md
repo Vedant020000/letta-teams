@@ -43,6 +43,7 @@ letta-teams agent-council --prompt "..."            # Start council session
 letta-teams agent-council --prompt "..." --participants "A,B"
 letta-teams agent-council --prompt "..." --max-turns 7
 letta-teams council read [sessionId]                 # Read final decision
+letta-teams council status [sessionId]               # Show session status/progress
 letta-teams council --watch [sessionId]              # Wait for final decision
 
 # Conversation forks / targets
@@ -218,6 +219,7 @@ letta-teams agent-council --prompt "Resolve API versioning direction" --message 
 
 # Read/watch final plan
 letta-teams council read
+letta-teams council status
 letta-teams council --watch
 ```
 

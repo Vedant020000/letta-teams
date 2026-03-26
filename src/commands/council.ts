@@ -14,6 +14,37 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function getCouncilStatusPayload(sessionId: string): {
+  sessionId: string;
+  status: string;
+  currentTurn: number;
+  maxTurns: number;
+  participants: string[];
+  leadName: string | null;
+  updatedAt: string;
+  planReady: boolean;
+  finalPlanPath: string | null;
+  error: string | null;
+} {
+  const meta = loadCouncilSession(sessionId);
+  if (!meta) {
+    throw new Error(`Council session '${sessionId}' not found`);
+  }
+
+  return {
+    sessionId: meta.sessionId,
+    status: meta.status,
+    currentTurn: meta.currentTurn,
+    maxTurns: meta.maxTurns,
+    participants: meta.participants,
+    leadName: meta.leadName ?? null,
+    updatedAt: meta.updatedAt,
+    planReady: Boolean(meta.finalPlanPath),
+    finalPlanPath: meta.finalPlanPath ?? null,
+    error: meta.error ?? null,
+  };
+}
+
 export function registerCouncilCommands(program: Command): void {
   program
     .command('agent-council')
@@ -52,6 +83,42 @@ export function registerCouncilCommands(program: Command): void {
   const council = program
     .command('council')
     .description('Read/watch council decisions');
+
+  council
+    .command('status [sessionId]')
+    .description('Show council session status and progress')
+    .action((sessionId?: string) => {
+      const globalOpts = program.opts();
+      try {
+        const resolved = resolveSessionId(sessionId);
+        if (!resolved) {
+          throw new Error('No council sessions found');
+        }
+
+        const payload = getCouncilStatusPayload(resolved);
+
+        if (globalOpts.json) {
+          console.log(JSON.stringify(payload, null, 2));
+          return;
+        }
+
+        console.log(`Council: ${payload.sessionId}`);
+        console.log(`Status: ${payload.status}`);
+        console.log(`Turn: ${payload.currentTurn}/${payload.maxTurns}`);
+        console.log(`Participants: ${payload.participants.join(', ') || '-'}`);
+        console.log(`Lead: ${payload.leadName ?? '-'}`);
+        console.log(`Updated: ${new Date(payload.updatedAt).toLocaleString()}`);
+        console.log(`Final plan: ${payload.planReady ? (payload.finalPlanPath ?? 'ready') : 'not ready'}`);
+
+        if (payload.error) {
+          const firstLine = payload.error.split('\n')[0];
+          const hasMore = payload.error.includes('\n');
+          console.log(`Error: ${firstLine}${hasMore ? ' (truncated)' : ''}`);
+        }
+      } catch (error) {
+        handleCliError(error as Error, globalOpts.json);
+      }
+    });
 
   council
     .command('read [sessionId]')

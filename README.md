@@ -145,6 +145,7 @@ letta-teams agent-council --prompt "Pick DB indexing strategy" --participants "b
 
 # Read or watch final decision
 letta-teams council read
+letta-teams council status
 letta-teams council --watch
 ```
 
