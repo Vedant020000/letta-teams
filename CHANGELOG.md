@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/Vedant020000/letta-teams/compare/v0.9.0...v0.9.1) (2026-04-12)
+
+
+### Bug Fixes
+
+* **council:** ignore 409 CONFLICT when no active runs to cancel ([22791e0](https://github.com/Vedant020000/letta-teams/commit/22791e05496cf27938527e6c227a70a2733959a8))
+
 # [0.9.0](https://github.com/Vedant020000/letta-teams/compare/v0.8.2...v0.9.0) (2026-03-26)
 
 
