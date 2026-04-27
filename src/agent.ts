@@ -8,6 +8,7 @@ import {
   resumeSession,
 } from "@letta-ai/letta-code-sdk";
 import type { AnyAgentTool } from "@letta-ai/letta-code-sdk";
+import Letta from "@letta-ai/letta-client";
 import pLimit from "p-limit";
 import type { TeammateState, MemfsStartup } from "./types.js";
 import { MEMFS_STARTUP_VALUES } from "./types.js";
@@ -694,6 +695,19 @@ export async function spawnTeammate(
         }),
       { maxAttempts: 3, baseDelayMs: 2000 }
     );
+
+    // Update agent name on Letta server via SDK
+    try {
+      const apiKey = getApiKey();
+      if (apiKey) {
+        const baseURL = process.env.LETTA_BASE_URL || "https://api.letta.com";
+        const client = new Letta({ apiKey, baseURL });
+        await client.agents.update(agentId, { name });
+      }
+    } catch (error) {
+      // Log but don't fail - name is a nice-to-have
+      console.warn(`Failed to set agent name on server: ${error}`);
+    }
 
     // Create a session and get conversation ID for persistent memory
     let conversationId: string | undefined;
