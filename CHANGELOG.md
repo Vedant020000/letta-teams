@@ -1,5 +1,13 @@
 # Changelog
 
+# [0.10.0](https://github.com/Vedant020000/letta-teams/compare/v0.9.1...v0.10.0) (2026-04-27)
+
+
+### Features
+
+* auto-name teammates on Letta server ([cc33ab2](https://github.com/Vedant020000/letta-teams/commit/cc33ab2ec6cd61a4e060f407bef3fc304dfaa484))
+* auto-name teammates on Letta server ([db77349](https://github.com/Vedant020000/letta-teams/commit/db773495dc969f091bb948e179cc73824625b5b0))
+
 ## [0.9.1](https://github.com/Vedant020000/letta-teams/compare/v0.9.0...v0.9.1) (2026-04-12)
 
 
