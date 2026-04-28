@@ -1,6 +1,6 @@
 {
   "name": "letta-teams-sdk",
-  "version": "0.10.0",
+  "version": "1.0.0",
   "description": "Reusable SDK for orchestrating teams of stateful Letta agents",
   "type": "module",
   "main": "./dist/index.js",
@@ -85,7 +85,12 @@
         {
           "writerOpts": {
             "groupBy": "type",
-            "commitGroupsSort": ["feat", "fix", "perf", "refactor"],
+            "commitGroupsSort": [
+              "feat",
+              "fix",
+              "perf",
+              "refactor"
+            ],
             "commitsSort": "scope"
           }
         }
@@ -107,7 +112,10 @@
       [
         "@semantic-release/git",
         {
-          "assets": ["package.json", "CHANGELOG.md"],
+          "assets": [
+            "package.json",
+            "CHANGELOG.md"
+          ],
           "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
         }
       ]
