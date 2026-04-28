@@ -1,6 +1,6 @@
 {
   "name": "letta-teams-sdk",
-  "version": "1.0.0",
+  "version": "0.10.0",
   "description": "Reusable SDK for orchestrating teams of stateful Letta agents",
   "type": "module",
   "main": "./dist/index.js",
