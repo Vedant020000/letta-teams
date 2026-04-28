@@ -1,6 +1,6 @@
 {
   "name": "letta-teams",
-  "version": "0.10.0",
+  "version": "1.0.0",
   "description": "CLI for orchestrating teams of stateful Letta agents working in parallel",
   "type": "module",
   "main": "./dist/cli.js",
@@ -46,7 +46,7 @@
     "commander": "^12.1.0",
     "dotenv": "^16.4.7",
     "ink": "^4.4.1",
-    "letta-teams-sdk": "*",
+    "letta-teams-sdk": "1.0.0",
     "ora": "^9.3.0",
     "react": "^18.2.0"
   },
@@ -58,7 +58,12 @@
         {
           "writerOpts": {
             "groupBy": "type",
-            "commitGroupsSort": ["feat", "fix", "perf", "refactor"],
+            "commitGroupsSort": [
+              "feat",
+              "fix",
+              "perf",
+              "refactor"
+            ],
             "commitsSort": "scope"
           }
         }
@@ -80,7 +85,10 @@
       [
         "@semantic-release/git",
         {
-          "assets": ["package.json", "CHANGELOG.md"],
+          "assets": [
+            "package.json",
+            "CHANGELOG.md"
+          ],
           "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
         }
       ]
