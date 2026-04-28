@@ -73,7 +73,7 @@ jobs:
         run: npm run build
 
       - name: Semantic Release
-        run: npx semantic-release
+        run: npm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Use npm granular token with package publish permissions.
