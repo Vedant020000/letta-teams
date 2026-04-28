@@ -89,20 +89,37 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Pack
-        run: npm pack
+      - name: Pack SDK
+        run: npm pack -w letta-teams-sdk
 
-      - name: Test npm install flow (Windows)
+      - name: Pack CLI
+        run: npm pack -w letta-teams
+
+      - name: Test workspace package install flow (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $pkg = (Get-Item letta-teams-*.tgz).FullName
-          npm install -g $pkg
-          letta-teams --help
+          New-Item -ItemType Directory -Force -Path smoke | Out-Null
+          Copy-Item (Get-Item letta-teams-sdk-*.tgz).FullName smoke\
+          Copy-Item (Get-Item letta-teams-*.tgz).FullName smoke\
+          Push-Location smoke
+          npm init -y | Out-Null
+          $sdk = (Get-Item letta-teams-sdk-*.tgz).Name
+          $cli = (Get-Item letta-teams-*.tgz | Where-Object { $_.Name -notlike 'letta-teams-sdk-*' }).Name
+          npm install "./$sdk" "./$cli"
+          npx letta-teams --help
+          node -e "import('letta-teams-sdk').then(()=>console.log('sdk import ok'))"
+          Pop-Location
 
-      - name: Test npm install flow (Unix)
+      - name: Test workspace package install flow (Unix)
         if: runner.os != 'Windows'
         shell: sh
         run: |
-          npm install -g ./letta-teams-*.tgz
-          letta-teams --help
+          mkdir -p smoke
+          cp ./letta-teams-sdk-*.tgz smoke/
+          cp ./letta-teams-*.tgz smoke/
+          cd smoke
+          npm init -y >/dev/null 2>&1
+          npm install ./letta-teams-sdk-*.tgz ./letta-teams-*.tgz
+          npx letta-teams --help
+          node -e "import('letta-teams-sdk').then(()=>console.log('sdk import ok'))"
