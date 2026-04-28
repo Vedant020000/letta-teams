@@ -5,7 +5,12 @@
 [![npm version](https://img.shields.io/npm/v/letta-teams?style=flat-square&color=crimson&logo=npm)](https://www.npmjs.com/package/letta-teams) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=flat-square&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/vedant0200) [![GitHub issues](https://img.shields.io/github/issues/vedant020000/letta-teams?style=flat-square&color=red)](https://github.com/vedant020000/letta-teams/issues)
 
 
-A CLI interface for Letta Code and LettaBot agents to orchestrate teams of stateful AI agents. Spawn specialized teammates, dispatch parallel tasks, and coordinate work across multiple agents with persistent memory.
+A workspace monorepo for orchestrating teams of stateful Letta agents.
+
+It now ships as two packages:
+
+- `letta-teams` - the CLI for running orchestration from the terminal
+- `letta-teams-sdk` - the programmatic SDK for embedding the orchestration runtime into your own app
 
 ![Letta Teams preview](./assets/preview.png)
 
@@ -19,13 +24,80 @@ Core features:
 - **Memory**: persistent memory + init flows for better long-running coordination
 - **Council**: run structured multi-agent deliberation and get one final decision
 
+## Packages
+
+### `letta-teams`
+
+Use the CLI package when you want to:
+
+- manage teammates from the terminal
+- dispatch work manually
+- monitor tasks with the dashboard/TUI
+- install the bundled `letta-teams` skill for agents
+
+### `letta-teams-sdk`
+
+Use the SDK when you want to:
+
+- embed Letta Teams into another app
+- trigger teammate lifecycle and task flows from code
+- integrate orchestration into Electron, desktop, or server-side tooling
+
+The SDK exposes a `TeamsRuntime` abstraction with three main surfaces:
+
+- `runtime.daemon` - start/check/stop the background daemon
+- `runtime.teammates` - spawn, list, fork, reinit, remove teammates
+- `runtime.tasks` - dispatch, get, list, wait, cancel tasks
+
 ## Installation
 
-Install the CLI:
+Install the CLI globally:
 
 ```bash
 npm install -g letta-teams
 ```
+
+Install the SDK in an app/project:
+
+```bash
+npm install letta-teams-sdk
+```
+
+## Quick SDK Example
+
+```ts
+import { createTeamsRuntime } from "letta-teams-sdk";
+
+const runtime = createTeamsRuntime();
+
+await runtime.daemon.ensureRunning();
+
+await runtime.teammates.spawn({
+  name: "backend",
+  role: "Backend engineer focused on auth and APIs",
+});
+
+const { taskId } = await runtime.tasks.dispatch({
+  target: "backend",
+  message: "Design and implement the auth endpoints",
+});
+
+const task = await runtime.tasks.wait(taskId);
+console.log(task.status, task.result);
+```
+
+### How the SDK works
+
+`letta-teams-sdk` is the extracted programmatic interface over the same orchestration system the CLI uses.
+
+At a high level:
+
+1. `createTeamsRuntime()` creates a filesystem-backed runtime.
+2. The runtime uses local store state (`.lteams`, teammate state, task state) for durability.
+3. High-level teammate/task operations route through the daemon-backed orchestration layer.
+4. The daemon coordinates teammate execution, task dispatch, and background work.
+
+So the SDK is not a separate reimplementation - it is the reusable code API over the existing Letta Teams runtime.
 
 > [!NOTE]
 > If you want agents to orchestrate through the bundled skill, install it with:
@@ -155,7 +227,7 @@ letta-teams council --watch
 
 Every message creates a **task** with:
 - Unique ID for tracking
-- Status: pending → running → done/error
+- Status: pending -> running -> done/error
 - Results and tool call history
 
 ### Interactive TUI Dashboard
@@ -220,9 +292,11 @@ letta-teams task <task-id> --wait
 
 ## Documentation
 
-- **[skills/letta-teams.md](skills/letta-teams.md)** — Full command reference for agents
-- **[Letta Documentation](https://docs.letta.com)** — Platform documentation
-- **[GitHub Issues](https://github.com/vedant020000/letta-teams/issues)** — Bug reports and feedback
+- **[packages/letta-teams/README.md](packages/letta-teams/README.md)** - CLI package README
+- **[packages/letta-teams-sdk/README.md](packages/letta-teams-sdk/README.md)** - SDK package README
+- **[skills/letta-teams.md](skills/letta-teams.md)** - Full command reference for agents
+- **[Letta Documentation](https://docs.letta.com)** - Platform documentation
+- **[GitHub Issues](https://github.com/vedant020000/letta-teams/issues)** - Bug reports and feedback
 
 ## Targeted Messaging and Forks
 
@@ -292,3 +366,5 @@ Your support helps keep projects like this free and open source. Thank you!
 ## License
 
 MIT
+
+
