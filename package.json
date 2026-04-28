@@ -1,76 +1,39 @@
 {
-  "name": "letta-teams",
-  "version": "0.10.0",
-  "description": "CLI for orchestrating teams of stateful Letta agents working in parallel",
+  "name": "letta-teams-workspace",
+  "private": true,
   "type": "module",
-  "main": "./dist/cli.js",
-  "types": "./dist/cli.d.ts",
-  "bin": {
-    "letta-teams": "./dist/cli.js",
-    "lteams": "./dist/cli.js"
-  },
-  "files": [
-    "dist/",
-    "scripts/",
-    "skills/",
-    "README.md",
-    "LICENSE",
-    "CHANGELOG.md"
+  "workspaces": [
+    "packages/*"
   ],
   "scripts": {
-    "build": "node scripts/build.js",
-    "dev": "tsc --watch",
-    "start": "node dist/cli.js",
+    "build": "npm run build -w letta-teams-sdk && npm run build -w letta-teams",
+    "dev": "npm run dev -w letta-teams",
+    "start": "npm run start -w letta-teams",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "tsc --noEmit",
-    "prepublishOnly": "npm run build && npm test",
-    "postinstall": "node scripts/patch-context-window.js"
+    "lint": "npm run lint -w letta-teams-sdk && npm run build -w letta-teams-sdk && npm run lint -w letta-teams",
+    "release": "multi-semantic-release --sequential-init",
+    "release:dry-run": "multi-semantic-release --sequential-init --dry-run --no-ci"
   },
-  "keywords": [
-    "letta",
-    "ai",
-    "agents",
-    "cli",
-    "multi-agent",
-    "orchestration",
-    "parallel",
-    "llm",
-    "assistant",
-    "stateful-agents",
-    "agent-teams"
-  ],
-  "author": "Vedant Sondur <vedantsondur020@gmail.com>",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Vedant020000/letta-teams.git"
-  },
-  "bugs": {
-    "url": "https://github.com/Vedant020000/letta-teams/issues"
-  },
-  "homepage": "https://github.com/Vedant020000/letta-teams#readme",
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "dependencies": {
-    "@letta-ai/letta": "^0.0.1",
-    "@letta-ai/letta-client": "^1.7.11",
-    "@letta-ai/letta-code-sdk": "^0.1.10",
-    "commander": "^12.1.0",
-    "dotenv": "^16.4.7",
-    "ink": "^4.4.1",
-    "ora": "^9.3.0",
-    "p-limit": "^6.2.0",
-    "react": "^18.2.0"
+  "multi-release": {
+    "sequentialInit": true,
+    "deps": {
+      "bump": "override",
+      "release": "patch",
+      "prefix": ""
+    }
   },
   "devDependencies": {
+    "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^12.0.6",
+    "@semantic-release/npm": "^12.0.2",
+    "@semantic-release/release-notes-generator": "^14.1.0",
     "@types/node": "^22.13.10",
     "@types/react": "^18.2.0",
+    "multi-semantic-release": "^3.1.0",
     "proper-lockfile": "^4.1.2",
     "semantic-release": "^25.0.3",
     "typescript": "^5.8.2",

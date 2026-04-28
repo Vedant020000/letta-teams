@@ -1,0 +1,89 @@
+{
+  "name": "letta-teams",
+  "version": "0.10.0",
+  "description": "CLI for orchestrating teams of stateful Letta agents working in parallel",
+  "type": "module",
+  "main": "./dist/cli.js",
+  "types": "./dist/cli.d.ts",
+  "bin": {
+    "letta-teams": "./dist/cli.js",
+    "lteams": "./dist/cli.js"
+  },
+  "files": [
+    "dist/",
+    "scripts/",
+    "skills/",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "node scripts/build.js",
+    "dev": "tsc -p tsconfig.json --watch",
+    "start": "node dist/cli.js",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "postinstall": "node scripts/patch-context-window.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "Vedant Sondur <vedantsondur020@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Vedant020000/letta-teams.git",
+    "directory": "packages/letta-teams"
+  },
+  "bugs": {
+    "url": "https://github.com/Vedant020000/letta-teams/issues"
+  },
+  "homepage": "https://github.com/Vedant020000/letta-teams/tree/main/packages/letta-teams",
+  "publishConfig": {
+    "access": "public",
+    "provenance": false
+  },
+  "dependencies": {
+    "@letta-ai/letta-client": "^1.7.11",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.7",
+    "ink": "^4.4.1",
+    "letta-teams-sdk": "*",
+    "ora": "^9.3.0",
+    "react": "^18.2.0"
+  },
+  "release": {
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      [
+        "@semantic-release/release-notes-generator",
+        {
+          "writerOpts": {
+            "groupBy": "type",
+            "commitGroupsSort": ["feat", "fix", "perf", "refactor"],
+            "commitsSort": "scope"
+          }
+        }
+      ],
+      [
+        "@semantic-release/changelog",
+        {
+          "changelogFile": "CHANGELOG.md",
+          "changelogTitle": "# Changelog"
+        }
+      ],
+      "@semantic-release/npm",
+      [
+        "@semantic-release/github",
+        {
+          "assets": []
+        }
+      ],
+      [
+        "@semantic-release/git",
+        {
+          "assets": ["package.json", "CHANGELOG.md"],
+          "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+        }
+      ]
+    ]
+  }
+}
